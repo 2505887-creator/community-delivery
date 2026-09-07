@@ -5,13 +5,19 @@ import ResetPasswordPage from './components/ResetPasswordPage';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
-// This app has no router yet, so the one auth page that needs its own URL
-// (the Supabase password-reset email link) is handled with a plain
-// pathname check rather than pulling in react-router for a single route.
-// If real client-side routing is added later, move this into it.
+// Landing page lazy import to avoid bundling when not used heavily
+const isLandingRoute = window.location.pathname === '/';
+let LandingPage: any = null;
+if (isLandingRoute) {
+  // dynamic import to keep initial bundle small for SPA users
+  LandingPage = (await import('./pages/LandingPage/LandingPage')).default;
+}
+
 function Root() {
   const isResetPasswordRoute = window.location.pathname === '/auth/reset-password';
-  return isResetPasswordRoute ? <ResetPasswordPage /> : <App />;
+  if (isResetPasswordRoute) return <ResetPasswordPage />;
+  if (isLandingRoute && LandingPage) return <LandingPage />;
+  return <App />;
 }
 
 createRoot(document.getElementById('root')!).render(
