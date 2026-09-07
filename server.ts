@@ -12,6 +12,9 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import driversRouter from './server/drivers';
+import servicesRouter from './server/services';
+import createOrdersRouter from './server/orders';
+import storesRouter from './server/stores';
 
 const app = express();
 const PORT = 3000;
@@ -378,6 +381,9 @@ app.get('/api/drivers', async (_req: Request, res: Response) => {
 // --------------------------------------------------
 
 app.use('/api/drivers', driversRouter);
+app.use('/api/services', servicesRouter);
+app.use('/api/stores', storesRouter);
+app.use('/api/orders', createOrdersRouter);
 
 // --------------------------------------------------
 // YOUR EXISTING ORDER / OTHER API ROUTES

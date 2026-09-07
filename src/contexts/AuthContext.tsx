@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole } from '../types';
 
@@ -10,9 +10,6 @@ export type PublicUser = {
   name?: string;
 } | null;
 
-// Roles a person can pick for themselves at sign-up. Admin is assigned
-// manually (via Supabase dashboard / an admin tool), never through the
-// public form -- the DB trigger also enforces this server-side.
 export const SELF_SERVICE_ROLES: UserRole[] = ['tenant', 'provider', 'driver', 'merchant'];
 
 interface SignUpResult {
@@ -26,7 +23,7 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, name: string, role: UserRole) => Promise<SignUpResult>;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole | 'admin' }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
@@ -40,24 +37,64 @@ export const useAuth = () => {
   return ctx;
 };
 
+const isUserRole = (value: unknown): value is UserRole | 'admin' =>
+  value === 'tenant' || value === 'provider' || value === 'driver' || value === 'merchant' || value === 'admin';
+
 async function loadProfile(session: Session | null): Promise<PublicUser> {
   if (!session?.user) return null;
 
+  const fallback: NonNullable<PublicUser> = {
+    id: session.user.id,
+    email: session.user.email || '',
+    role: 'tenant',
+    name: typeof session.user.user_metadata?.name === 'string' ? session.user.user_metadata.name : undefined,
+  };
+
+  // The profiles table is authoritative for authorization. Never trust a
+  // client-supplied role in metadata when an existing profile is available.
   const { data, error } = await supabase
     .from('profiles')
     .select('id, email, name, role')
     .eq('id', session.user.id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    // Profile row may not have been created yet (rare race right after
-    // sign-up) -- fall back to what the auth session itself tells us.
-    return {
-      id: session.user.id,
-      email: session.user.email || '',
-      role: (session.user.user_metadata?.role as UserRole) || 'tenant',
-      name: session.user.user_metadata?.name,
-    };
+  if (error) {
+    console.error('[Auth] Unable to load profile:', error.message);
+    return fallback;
+  }
+
+  if (!data) {
+    // This can happen for an older Auth user created before the profile
+    // trigger existed. Try to repair the row through the RLS-safe own-row
+    // insert policy. If insertion is not permitted, the app still remains
+    // usable as a tenant until the database migration is applied.
+    const metadataRole = session.user.user_metadata?.role;
+    const safeRole: UserRole = isUserRole(metadataRole) && metadataRole !== 'admin' ? metadataRole : 'tenant';
+
+    const { data: created, error: createError } = await supabase
+      .from('profiles')
+      .insert({
+        id: session.user.id,
+        email: session.user.email || '',
+        name: typeof session.user.user_metadata?.name === 'string' ? session.user.user_metadata.name : null,
+        role: safeRole,
+      })
+      .select('id, email, name, role')
+      .single();
+
+    if (!createError && created) {
+      return { id: created.id, email: created.email, role: created.role, name: created.name ?? undefined };
+    }
+
+    if (createError) {
+      console.warn('[Auth] Profile row missing and could not be created:', createError.message);
+    }
+    return fallback;
+  }
+
+  if (!isUserRole(data.role)) {
+    console.error('[Auth] Invalid profile role:', data.role);
+    return { ...fallback, role: 'tenant', name: data.name ?? fallback.name };
   }
 
   return { id: data.id, email: data.email, role: data.role, name: data.name ?? undefined };
@@ -71,17 +108,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setUser(await loadProfile(data.session));
-      setLoading(false);
-    });
+    const initialize = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!mounted) return;
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        setSession(data.session);
+        const profile = await loadProfile(data.session);
+        if (mounted) setUser(profile);
+      } catch (error) {
+        console.error('[Auth] Session initialization failed:', error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void initialize();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, newSession) => {
+      if (!mounted) return;
+
       setSession(newSession);
-      setUser(await loadProfile(newSession));
-      setLoading(false);
+
+      // Do not perform a Supabase profile request synchronously inside the
+      // auth callback. Deferring it avoids auth-lock contention and keeps the
+      // session event responsive.
+      window.setTimeout(async () => {
+        if (!mounted) return;
+        if (!newSession) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        const profile = await loadProfile(newSession);
+        if (mounted) {
+          setUser(profile);
+          setLoading(false);
+        }
+      }, 0);
+
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -96,6 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     role: UserRole
   ): Promise<SignUpResult> => {
+    if (!SELF_SERVICE_ROLES.includes(role)) {
+      return { success: false, error: 'That account type cannot be created here.' };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -107,20 +186,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) return { success: false, error: error.message };
 
-    // If email confirmation is required, Supabase returns a user but no
-    // active session yet.
-    const needsEmailConfirmation = !!data.user && !data.session;
-    return { success: true, needsEmailConfirmation };
+    return {
+      success: true,
+      needsEmailConfirmation: !!data.user && !data.session,
+    };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
-    return { success: true };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.session) {
+      return { success: false, error: error?.message || 'Unable to create a session.' };
+    }
+
+    // Read the profile explicitly here so LoginModal can immediately verify
+    // the selected portal role before allowing the user into the dashboard.
+    const profile = await loadProfile(data.session);
+    return { success: true, role: profile?.role || 'tenant' };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('[Auth] Sign-out failed:', error.message);
     setUser(null);
     setSession(null);
   };
@@ -147,4 +233,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
-

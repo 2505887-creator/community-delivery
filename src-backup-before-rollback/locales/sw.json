@@ -1,0 +1,39 @@
+{
+  "app": {
+    "title": "community-delivery",
+    "signIn": "Ingia",
+    "register": "Jisajili",
+    "logout": "Toka",
+    "driverApply": "Omba kuwa dereva"
+  },
+  "auth": {
+    "email": "Barua pepe",
+    "password": "Nenosiri",
+    "name": "Jina",
+    "phone": "Simu"
+  },
+  "driver": {
+    "apply": "Maombi ya udereva",
+    "vehicleReg": "Nambari ya usajili wa gari",
+    "vehicleType": "Aina ya gari",
+    "idNumber": "Nambari ya Kitambulisho/Pasipoti",
+    "idDocument": "Hati ya kitambulisho",
+    "vehicleDocument": "Hati ya gari",
+    "payoutMethod": "Njia ya malipo",
+    "payoutInfo": "Taarifa za malipo",
+    "submit": "Omba kuwa dereva",
+    "submitting": "Inatuma...",
+    "applicationSubmitted": "Maombi yametumwa. Utaarifiwa baada ya kuidhinishwa."
+  },
+  "admin": {
+    "pendingDrivers": "Madereva wanaosubiri",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "noPendingDrivers": "Hakuna madereva wanaosubiri"
+  },
+  "messages": {
+    "apply_success": "Maombi yametumwa. Utaarifiwa baada ya kuidhinishwa.",
+    "invalidPhone": "Nambari ya simu si sahihi",
+    "applyFailed": "Imeshindikana kutuma maombi"
+  }
+}

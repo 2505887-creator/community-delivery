@@ -1,1 +1,219 @@
-<PASTE_REPLACEMENT>
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  tenant
+  provider
+  driver
+  merchant
+  admin
+}
+
+enum ServiceCategory {
+  plumbing
+  electrical
+  cleaning
+  carpentry
+  appliances
+}
+
+enum StoreType {
+  supermarket
+  pharmacy
+}
+
+enum OrderType {
+  service
+  store_delivery
+  ride_cargo
+}
+
+enum OrderStatus {
+  pending
+  assigned
+  en_route
+  arrived
+  in_progress
+  completed
+  cancelled
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(tenant)
+  createdAt    DateTime @default(now())
+}
+
+model Profile {
+  id        String   @id
+  email     String
+  name      String?
+  role      UserRole @default(tenant)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("profiles")
+}
+
+model VerifiedPro {
+  id              String          @id @default(cuid())
+  userId          String?         @unique
+  name            String
+  avatar          String?
+  category        ServiceCategory
+  title           String
+  rating          Float           @default(0)
+  reviewCount     Int             @default(0)
+  hourlyRate      Float
+  isVerified      Boolean         @default(false)
+  isOnline        Boolean         @default(false)
+  licenseNumber   String?
+  yearsExperience Int             @default(0)
+  distanceMiles   Float           @default(0)
+  responseTimeMin Int             @default(30)
+  specialties     String[]
+  badges          String[]
+  phone           String
+  completedJobs   Int             @default(0)
+  bio             String?
+  lat             Float
+  lng             Float
+  address         String
+  createdAt       DateTime        @default(now())
+  orders          Order[]
+}
+
+model LocalStore {
+  id                  String      @id @default(cuid())
+  ownerId             String?
+  name                String
+  type                StoreType
+  logo                String?
+  coverImage          String?
+  rating              Float
+  reviewCount         Int
+  distanceMiles       Float
+  deliveryEstimateMin Int
+  deliveryFee         Float
+  minOrder            Float
+  address             String
+  isOpen              Boolean
+  items               StoreItem[]
+  orders              Order[]
+  createdAt           DateTime    @default(now())
+}
+
+model StoreItem {
+  id          String     @id @default(cuid())
+  storeId     String
+  store       LocalStore @relation(fields: [storeId], references: [id])
+  name        String
+  category    String
+  price       Float
+  unit        String
+  image       String?
+  inStock     Boolean
+  description String?
+}
+
+model Driver {
+  id                  String    @id @default(cuid())
+  userId              String?   @unique
+  name                String
+  avatar              String?
+  vehicleType         String
+  vehiclePlate        String
+  rating              Float     @default(0)
+  completedDeliveries Int       @default(0)
+  phone               String
+  currentLat          Float     @default(0)
+  currentLng          Float     @default(0)
+  isOnline            Boolean   @default(false)
+  idNumber            String?
+  vehicleReg          String?
+  payoutMethod        String?
+  payoutInfo          Json?
+  verified            Boolean   @default(false)
+  verifiedAt          DateTime?
+  idDocumentUrl       String?
+  vehicleDocUrl       String?
+  createdAt           DateTime  @default(now())
+  orders              Order[]
+}
+
+model Order {
+  id                   String           @id @default(cuid())
+  type                 OrderType
+  title                String
+  category             String?
+  status               OrderStatus      @default(pending)
+  createdAt            DateTime         @default(now())
+  tenantUserId         String?
+  tenantName           String
+  tenantPhone          String
+  tenantAddress        String
+  apartmentUnit        String?
+  providerId           String?
+  provider             VerifiedPro?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  driverId             String?
+  driver               Driver?          @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  storeId              String?
+  store               LocalStore?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  subtotal             Float
+  deliveryFee          Float
+  serviceFee           Float
+  tax                  Float
+  total                Float
+  paymentMethod        String
+  estimatedArrivalMin  Int
+  urgency              String
+  scheduledFor         DateTime?
+  notes                String?
+  tenantLat            Float?
+  tenantLng            Float?
+  originLat            Float?
+  originLng            Float?
+  currentLat           Float?
+  currentLng           Float?
+  assignments          OrderAssignment[]
+  events               OrderEvent[]
+  messages             OrderMessage[]
+}
+
+model OrderAssignment {
+  id        String   @id @default(cuid())
+  orderId   String
+  proId     String
+  driverId  String?
+  assignedBy String
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model OrderMessage {
+  id         String   @id @default(cuid())
+  orderId    String
+  sender     String
+  senderName String
+  text       String
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}

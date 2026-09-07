@@ -20,7 +20,7 @@ import DriverDashboard from './components/DriverDashboard';
 import MerchantDashboard from './components/MerchantDashboard';
 import TenantDashboard from './components/TenantDashboard';
 import LoginModal from './components/LoginModal';
-import RegisterModal from './components/RegisterModal';
+import RegisterModal from './components/Registermodal';
 import ForgotPasswordModal from './components/ForgotPasswordModal';
 import { useAuth } from './contexts/AuthContext';
 
@@ -29,7 +29,7 @@ export default function App() {
   const [tenantAddress, setTenantAddress] = useState('Kilimani, Nairobi, Kenya');
 
   // Auth state -- identity and session come from Supabase via AuthContext.
-  const { user, session, signOut } = useAuth();
+  const { user, session, signOut, loading: authLoading } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isForgotOpen, setIsForgotOpen] = useState(false);
@@ -83,6 +83,14 @@ export default function App() {
     showToast('Signed out');
   };
 
+
+  if (authLoading) {
+    return <div className="landing-loading"><div className="landing-loading-mark">OS</div><span>Loading your OmniServe portal…</span></div>;
+  }
+  if (!user) {
+    window.location.replace('/');
+    return null;
+  }
   // Attach the caller's Supabase access token so Express can identify who
   // is making the request (see server/lib/supabaseAdmin.ts requireAuth()).
   // Row Level Security in Postgres is the authoritative check either way.
@@ -125,8 +133,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Re-fetch whenever auth state changes so order visibility (governed by
-    // Postgres RLS) reflects who's actually signed in.
+    // Keep the portal aligned with the authenticated account. A provider
+    // should land in the provider workspace instead of the tenant marketplace.
+    if (user?.role && user.role !== 'admin') {
+      setCurrentRole(user.role);
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    // Re-fetch whenever auth state changes so the API can apply the caller's
+    // tenant/provider/driver visibility rules.
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token]);
@@ -175,8 +191,8 @@ export default function App() {
         title: `${selectedProForBooking.name} - ${bookingData.issueDescription.slice(0, 35)}...`,
         category: selectedProForBooking.category,
         providerId: selectedProForBooking.id,
-        tenantName: 'Peterson Thuita',
-        tenantPhone: '+254 023 456 789',
+        tenantName: user?.name || 'Customer',
+        tenantPhone: '',
         tenantAddress: tenantAddress,
         apartmentUnit: undefined,
         subtotal: bookingData.subtotal,
@@ -230,8 +246,8 @@ export default function App() {
         storeName: checkoutData.store.name,
         storeType: checkoutData.store.type,
         items: checkoutData.items,
-        tenantName: 'Peterson Thuita',
-        tenantPhone: '+254 023 456 789',
+        tenantName: user?.name || 'Customer',
+        tenantPhone: '',
         tenantAddress: tenantAddress,
         apartmentUnit: undefined,
         subtotal: checkoutData.subtotal,
@@ -314,10 +330,15 @@ export default function App() {
   // Update order status via REST API
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, proId?: string, driverId?: string) => {
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const endpoint = status === 'assigned' && proId
+        ? `/api/orders/${orderId}/assign`
+        : `/api/orders/${orderId}/status`;
+      const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ status, proId, driverId })
+        body: status === 'assigned' && proId
+          ? JSON.stringify({ proId, driverId })
+          : JSON.stringify({ status, proId, driverId })
       });
       const data = await res.json();
 
@@ -337,7 +358,7 @@ export default function App() {
   const handleSendMessage = async (orderId: string, text: string) => {
     try {
       const sender = currentRole === 'provider' ? 'provider' : currentRole === 'driver' ? 'driver' : 'tenant';
-      const senderName = currentRole === 'provider' ? 'Pro Technician' : currentRole === 'driver' ? 'Uber Courier' : 'Jordan Vance';
+      const senderName = user?.name || (currentRole === 'provider' ? 'Provider' : currentRole === 'driver' ? 'Driver' : 'Customer');
 
       const res = await fetch(`/api/orders/${orderId}/messages`, {
         method: 'POST',
@@ -501,7 +522,7 @@ export default function App() {
         {/* Main Header Navbar */}
         <Navbar
           currentRole={currentRole}
-          onRoleChange={setCurrentRole}
+          onRoleChange={(role) => { if (user?.role === 'admin') setCurrentRole(role); else setCurrentRole(user?.role || 'tenant'); }}
           cartCount={cartTotalCount}
           onOpenCart={() => setIsCartOpen(true)}
           activeOrders={orders}
@@ -518,7 +539,7 @@ export default function App() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
           
           {/* Role Banner Notification (When not in tenant mode) */}
-          {currentRole !== 'tenant' && (
+          {currentRole !== 'tenant' && user?.role === 'admin' && (
             <div className="bg-slate-900 text-white rounded-xl p-4 flex items-center justify-between text-xs border border-slate-800 shadow-md">
               <div className="flex items-center space-x-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping"></span>

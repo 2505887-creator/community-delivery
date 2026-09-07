@@ -1,47 +1,48 @@
-import { Star, Users, Check, ShieldCheck } from 'lucide-react';
 
-export default function LD_TrustStrip(){
+import { ShieldCheck, Star, Truck, Users } from 'lucide-react';
+
+const trustStats = [
+  {
+    value: 'Demo',
+    label: 'Product experience',
+    icon: Star,
+  },
+  {
+    value: 'Live',
+    label: 'Delivery tracking',
+    icon: Truck,
+  },
+  {
+    value: 'Local',
+    label: 'Provider network',
+    icon: Users,
+  },
+  {
+    value: 'Secure',
+    label: 'Authentication',
+    icon: ShieldCheck,
+  },
+];
+
+export default function LD_TrustStrip() {
   return (
-    <div className="container" style={{marginTop:18}}>
-      <div className="trust-strip" role="region" aria-label="Trusted by">
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <Star width={16} height={16} />
-          <div>
-            <div style={{fontSize:12,color:'var(--muted)'}}>4.9/5 average</div>
-            <div style={{fontWeight:800}}>Trusted by customers & providers</div>
+    <div className="trust-strip">
+      {trustStats.map((stat) => {
+        const Icon = stat.icon;
+
+        return (
+          <div className="trust-stat" key={stat.label}>
+            <div className="trust-stat-icon" aria-hidden="true">
+              <Icon size={19} />
+            </div>
+
+            <div className="trust-stat-content">
+              <strong>{stat.value}</strong>
+              <span>{stat.label}</span>
+            </div>
           </div>
-        </div>
-
-        <div style={{width:1,background:'var(--border)',height:36}} aria-hidden></div>
-
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <Users width={16} height={16} />
-          <div>
-            <div style={{fontSize:12,color:'var(--muted)'}}>10K+ deliveries</div>
-            <div style={{fontWeight:800}}>Local reach</div>
-          </div>
-        </div>
-
-        <div style={{width:1,background:'var(--border)',height:36}} aria-hidden></div>
-
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <Check width={16} height={16} />
-          <div>
-            <div style={{fontSize:12,color:'var(--muted)'}}>2K+ providers</div>
-            <div style={{fontWeight:800}}>Verified network</div>
-          </div>
-        </div>
-
-        <div style={{width:1,background:'var(--border)',height:36}} aria-hidden></div>
-
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <ShieldCheck width={16} height={16} />
-          <div>
-            <div style={{fontSize:12,color:'var(--muted)'}}>Secure payments</div>
-            <div style={{fontWeight:800}}>Protected transactions</div>
-          </div>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }

@@ -5,13 +5,39 @@ import { requireAuth, optionalAuth, AuthedRequest } from './lib/supabaseAdmin';
 const prisma = new PrismaClient();
 const router = express.Router();
 
+function serializePro(pro: any) {
+  return {
+    id: pro.id,
+    userId: pro.userId ?? undefined,
+    name: pro.name,
+    avatar: pro.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
+    category: pro.category,
+    title: pro.title,
+    rating: Number(pro.rating || 0),
+    reviewCount: Number(pro.reviewCount || 0),
+    hourlyRate: Number(pro.hourlyRate || 0),
+    isVerified: Boolean(pro.isVerified),
+    isOnline: Boolean(pro.isOnline),
+    licenseNumber: pro.licenseNumber || '',
+    yearsExperience: Number(pro.yearsExperience || 0),
+    distanceMiles: Number(pro.distanceMiles || 0),
+    responseTimeMin: Number(pro.responseTimeMin || 30),
+    specialties: Array.isArray(pro.specialties) ? pro.specialties : [],
+    badges: Array.isArray(pro.badges) ? pro.badges : [],
+    phone: pro.phone || '',
+    completedJobs: Number(pro.completedJobs || 0),
+    bio: pro.bio || '',
+    location: { lat: Number(pro.lat || 0), lng: Number(pro.lng || 0), address: pro.address || 'Nairobi, Kenya' },
+  };
+}
+
 // --------------------------------------------------
 // GET /api/services  -- public browse of all verified pros
 // --------------------------------------------------
 router.get('/', optionalAuth(), async (_req: AuthedRequest, res: Response) => {
   try {
     const pros = await prisma.verifiedPro.findMany({ orderBy: { createdAt: 'desc' } });
-    res.json({ success: true, data: pros });
+    res.json({ success: true, data: pros.map(serializePro) });
   } catch (err) {
     console.error('List services error:', err);
     res.status(500).json({ success: false, error: 'Failed to load services' });
@@ -24,7 +50,7 @@ router.get('/', optionalAuth(), async (_req: AuthedRequest, res: Response) => {
 router.get('/mine', requireAuth(['provider']), async (req: AuthedRequest, res: Response) => {
   try {
     const mine = await prisma.verifiedPro.findUnique({ where: { userId: req.user!.id } });
-    res.json({ success: true, data: mine });
+    res.json({ success: true, data: mine ? serializePro(mine) : null });
   } catch (err) {
     console.error('Get own service error:', err);
     res.status(500).json({ success: false, error: 'Failed to load your service listing' });
@@ -82,7 +108,7 @@ router.post('/', requireAuth(['provider']), async (req: AuthedRequest, res: Resp
       },
     });
 
-    res.status(201).json({ success: true, data: created });
+    res.status(201).json({ success: true, data: serializePro(created) });
   } catch (err) {
     console.error('Create service error:', err);
     res.status(500).json({ success: false, error: 'Failed to create service listing' });
@@ -108,7 +134,7 @@ router.patch('/:id', requireAuth(['provider', 'admin']), async (req: AuthedReque
     }
 
     const editable = [
-      'name', 'avatar', 'title', 'hourlyRate', 'licenseNumber', 'yearsExperience',
+      'name', 'avatar', 'title', 'hourlyRate', 'isOnline', 'licenseNumber', 'yearsExperience',
       'responseTimeMin', 'specialties', 'badges', 'phone', 'bio', 'lat', 'lng', 'address',
     ] as const;
 
@@ -118,7 +144,7 @@ router.patch('/:id', requireAuth(['provider', 'admin']), async (req: AuthedReque
     }
 
     const updated = await prisma.verifiedPro.update({ where: { id }, data });
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: serializePro(updated) });
   } catch (err) {
     console.error('Update service error:', err);
     res.status(500).json({ success: false, error: 'Failed to update service listing' });

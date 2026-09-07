@@ -157,60 +157,21 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Multi-Role Switcher */}
-        <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-xs">
-          <button
-            id="role-tenant-btn"
-            onClick={() => onRoleChange('tenant')}
-            className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-              currentRole === 'tenant'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Tenant</span>
-          </button>
-
-          <button
-            id="role-provider-btn"
-            onClick={() => onRoleChange('provider')}
-            className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-              currentRole === 'provider'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Wrench className="w-3.5 h-3.5 text-blue-600" />
-            <span className="hidden sm:inline">Pro</span>
-          </button>
-
-          <button
-            id="role-driver-btn"
-            onClick={() => onRoleChange('driver')}
-            className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-              currentRole === 'driver'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Truck className="w-3.5 h-3.5 text-amber-600" />
-            <span className="hidden sm:inline">Driver</span>
-          </button>
-
-          <button
-            id="role-merchant-btn"
-            onClick={() => onRoleChange('merchant')}
-            className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-              currentRole === 'merchant'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">Store</span>
-          </button>
-        </div>
+        {/* Role indicator: a normal account stays in its authorized portal. Admins may switch. */}
+        {user && (user.role === 'admin' ? (
+          <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-xs">
+            {([['tenant', User, 'Tenant'], ['provider', Wrench, 'Pro'], ['driver', Truck, 'Driver'], ['merchant', Store, 'Store']] as const).map(([role, Icon, label]) => (
+              <button key={role} onClick={() => onRoleChange(role)} className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${currentRole === role ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
+                <Icon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] font-extrabold">
+            {user.role === 'provider' ? <Wrench className="w-3.5 h-3.5" /> : user.role === 'driver' ? <Truck className="w-3.5 h-3.5" /> : user.role === 'merchant' ? <Store className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+            <span>{user.role === 'tenant' ? 'Customer portal' : `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)} portal`}</span>
+          </div>
+        ))}
       </div>
     </header>
   );

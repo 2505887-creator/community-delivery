@@ -1,0 +1,39 @@
+{
+  "app": {
+    "title": "community-delivery",
+    "signIn": "Sign in",
+    "register": "Register",
+    "logout": "Sign out",
+    "driverApply": "Apply as a driver"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "phone": "Phone"
+  },
+  "driver": {
+    "apply": "Driver application",
+    "vehicleReg": "Vehicle registration number",
+    "vehicleType": "Vehicle type",
+    "idNumber": "ID/Passport number",
+    "idDocument": "ID document",
+    "vehicleDocument": "Vehicle document",
+    "payoutMethod": "Payout method",
+    "payoutInfo": "Payout information",
+    "submit": "Apply to be a driver",
+    "submitting": "Submitting...",
+    "applicationSubmitted": "Application submitted. You will be notified on approval."
+  },
+  "admin": {
+    "pendingDrivers": "Pending drivers",
+    "approve": "Approve",
+    "reject": "Reject",
+    "noPendingDrivers": "No pending drivers"
+  },
+  "messages": {
+    "apply_success": "Application submitted. You will be notified on approval.",
+    "invalidPhone": "Invalid phone number",
+    "applyFailed": "Failed to submit application"
+  }
+}
