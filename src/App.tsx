@@ -18,6 +18,7 @@ import RideCargoSection from './components/RideCargoSection';
 import ProviderDashboard from './components/ProviderDashboard';
 import DriverDashboard from './components/DriverDashboard';
 import MerchantDashboard from './components/MerchantDashboard';
+import TenantDashboard from './components/TenantDashboard';
 import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
 import ForgotPasswordModal from './components/ForgotPasswordModal';
@@ -535,7 +536,8 @@ export default function App() {
           )}
 
           {/* ---------------- TENANT MODE ---------------- */}
-          {currentRole === 'tenant' && (
+          {currentRole === 'tenant' && <TenantDashboard tenantAddress={tenantAddress} pros={pros} stores={stores} orders={orders} tenantTab={tenantTab} setTenantTab={setTenantTab} proCategoryFilter={proCategoryFilter} setProCategoryFilter={setProCategoryFilter} proSearchQuery={proSearchQuery} setProSearchQuery={setProSearchQuery} cartItems={cartItems} latestActiveOrder={latestActiveOrder} />}
+          {currentRole !== 'tenant' && false && (
             <div className="space-y-6">
               
               {/* Category Quick Selector Grid (5 items from High Density theme) */}
