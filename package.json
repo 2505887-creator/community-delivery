@@ -23,7 +23,7 @@
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "i18next": "^26.4.2",
     "i18next-browser-languagedetector": "^8.2.1",
