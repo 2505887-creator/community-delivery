@@ -104,7 +104,7 @@ export default function App() {
         fetch('/api/services', { headers: authHeaders() }),
         fetch('/api/stores', { headers: authHeaders() }),
         fetch('/api/drivers', { headers: authHeaders() }),
-        fetch('/api/orders', { headers: authHeaders() })
+        fetch('/api/orders?mine=1', { headers: authHeaders() })
       ]);
 
       const [prosData, storesData, driversData, ordersData] = await Promise.all([
@@ -410,113 +410,6 @@ export default function App() {
           <span>{toastMessage}</span>
         </div>
       )}
-
-      {/* Left Sidebar - High Density Theme Signature */}
-      <aside className="w-60 bg-slate-900 text-white flex-col shrink-0 hidden lg:flex border-r border-slate-800 justify-between">
-        <div>
-          {/* Logo Brand Header */}
-          <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-white shadow-xs text-base">
-              &Omega;
-            </div>
-            <div>
-              <span className="text-xl font-bold tracking-tight text-white">OmniServe</span>
-              <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">LocalPro Market</p>
-            </div>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="py-6 space-y-1 text-sm font-medium">
-            <button
-              onClick={() => {
-                setCurrentRole('tenant');
-                setTenantTab('all');
-              }}
-              className={`w-full text-left px-6 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
-                currentRole === 'tenant' && tenantTab === 'all'
-                  ? 'bg-slate-800 border-l-4 border-blue-500 text-white font-bold'
-                  : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <div className="w-4 h-4 bg-blue-400 rounded-xs opacity-60"></div>
-              <span>Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentRole('tenant');
-                setTenantTab('pros');
-              }}
-              className={`w-full text-left px-6 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
-                currentRole === 'tenant' && tenantTab === 'pros'
-                  ? 'bg-slate-800 border-l-4 border-blue-500 text-white font-bold'
-                  : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Wrench className="w-4 h-4 text-slate-400" />
-              <span>Service Pros</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentRole('tenant');
-                setTenantTab('stores');
-              }}
-              className={`w-full text-left px-6 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
-                currentRole === 'tenant' && tenantTab === 'stores'
-                  ? 'bg-slate-800 border-l-4 border-blue-500 text-white font-bold'
-                  : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4 text-slate-400" />
-              <span>Marketplace</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentRole('tenant');
-                setTenantTab('transport');
-              }}
-              className={`w-full text-left px-6 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
-                currentRole === 'tenant' && tenantTab === 'transport'
-                  ? 'bg-slate-800 border-l-4 border-blue-500 text-white font-bold'
-                  : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Truck className="w-4 h-4 text-slate-400" />
-              <span>Fleet &amp; Drivers</span>
-            </button>
-
-            {/* In-Flight Tracker shortcut */}
-            {latestActiveOrder && (
-              <button
-                onClick={() => setActiveTrackingOrder(latestActiveOrder)}
-                className="w-full text-left px-6 py-3 flex items-center justify-between text-blue-400 hover:bg-slate-800 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
-                  <span className="font-bold">Active Dispatch</span>
-                </div>
-                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded">LIVE</span>
-              </button>
-            )}
-          </nav>
-        </div>
-
-        {/* Tenant Profile Badge at Bottom of Sidebar */}
-        <div className="p-6 border-t border-slate-800">
-          <div className="flex items-center gap-3 p-2 bg-slate-800/60 rounded-xl border border-slate-800">
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              JV
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-white truncate">Jordan Vance</p>
-              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Premium Tenant</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
       {/* Main App Content Body */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Main Header Navbar */}
@@ -531,7 +424,7 @@ export default function App() {
           onChangeAddress={() => setIsAddressModalOpen(true)}
           onOpenLogin={() => setIsLoginOpen(true)}
           onOpenRegister={() => setIsRegisterOpen(true)}
-          user={user}
+          user={user as unknown as typeof User}
           onLogout={handleLogout}
         />
 

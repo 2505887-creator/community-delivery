@@ -10,9 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// This client only ever holds the anon key. It is safe to ship to the
-// browser: Row Level Security in Postgres (see supabase/migrations) is what
-// actually restricts what any given signed-in user can read or write.
+
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     persistSession: true,

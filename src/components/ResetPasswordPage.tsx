@@ -2,12 +2,6 @@ import React, { useState } from 'react';
 import { Lock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-/**
- * Rendered at /auth/reset-password. Supabase's reset-password email link
- * lands here with a recovery session already attached (handled by
- * detectSessionInUrl: true in src/lib/supabaseClient.ts), so this page just
- * needs to collect and submit the new password.
- */
 export default function ResetPasswordPage() {
   const { updatePassword } = useAuth();
   const [password, setPassword] = useState('');

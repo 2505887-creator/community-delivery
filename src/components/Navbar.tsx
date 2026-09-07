@@ -1,5 +1,5 @@
 import { Shield, ShoppingCart, User, Wrench, Truck, Store, MapPin, Bell, Search, LogIn } from 'lucide-react';
-import { UserRole, Order } from '../types';
+import type { UserRole, Order } from '../types';
 
 interface NavbarProps {
   currentRole: UserRole;
@@ -10,11 +10,16 @@ interface NavbarProps {
   onSelectOrder: (order: Order) => void;
   tenantAddress: string;
   onChangeAddress: () => void;
-  // New props for auth UI
-  onOpenLogin?: () => void;
-  onOpenRegister?: () => void;
-  user?: { id: string; email: string; role: string; name?: string } | null;
-  onLogout?: () => void;
+  onOpenLogin: () => void;
+  onOpenRegister: () => void;
+  user: NavbarUser | null;
+  onLogout: () => void;
+}
+interface NavbarUser {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  role: UserRole;
 }
 
 export default function Navbar({
@@ -145,8 +150,9 @@ export default function Navbar({
           <div className="flex items-center gap-3 ml-2">
             <div className="hidden sm:flex flex-col items-end text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Signed in</span>
-              <span className="text-xs font-semibold text-slate-700 truncate max-w-[160px]">{user.name || user.email}</span>
+              <span className="text-xs font-semibold text-slate-700 truncate max-w-[160px]">{user?.name || user?.email || 'User'}</span>
             </div>
+
             <button
               id="header-logout-btn"
               onClick={onLogout}
@@ -156,22 +162,6 @@ export default function Navbar({
             </button>
           </div>
         )}
-
-        {/* Role indicator: a normal account stays in its authorized portal. Admins may switch. */}
-        {user && (user.role === 'admin' ? (
-          <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-xs">
-            {([['tenant', User, 'Tenant'], ['provider', Wrench, 'Pro'], ['driver', Truck, 'Driver'], ['merchant', Store, 'Store']] as const).map(([role, Icon, label]) => (
-              <button key={role} onClick={() => onRoleChange(role)} className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${currentRole === role ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
-                <Icon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] font-extrabold">
-            {user.role === 'provider' ? <Wrench className="w-3.5 h-3.5" /> : user.role === 'driver' ? <Truck className="w-3.5 h-3.5" /> : user.role === 'merchant' ? <Store className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-            <span>{user.role === 'tenant' ? 'Customer portal' : `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)} portal`}</span>
-          </div>
-        ))}
       </div>
     </header>
   );

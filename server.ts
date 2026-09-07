@@ -13,8 +13,10 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import driversRouter from './server/drivers';
 import servicesRouter from './server/services';
-import createOrdersRouter from './server/orders';
 import storesRouter from './server/stores';
+import ordersRouter from './server/orders';
+import usersRouter from './server/users';
+import catalogRouter from './server/catalog';
 
 const app = express();
 const PORT = 3000;
@@ -154,15 +156,14 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        name: name || email.split('@')[0],
-        role: role || 'tenant',
-      },
-    });
+const user = await prisma.user.create({
+  data: {
+    email,
+    passwordHash,
+    name: name || email.split('@')[0],
+    role: role || 'tenant',
+  },
+});
 
     const token = signToken({
       id: user.id,
@@ -383,24 +384,11 @@ app.get('/api/drivers', async (_req: Request, res: Response) => {
 app.use('/api/drivers', driversRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/stores', storesRouter);
-app.use('/api/orders', createOrdersRouter);
+app.use('/api/orders', ordersRouter);
 
-// --------------------------------------------------
-// YOUR EXISTING ORDER / OTHER API ROUTES
-// --------------------------------------------------
-//
-// KEEP YOUR EXISTING ORDER, PROVIDER, MERCHANT,
-// AI AND OTHER ROUTES HERE.
-//
-// Do NOT delete those routes from your original
-// server.ts. Keep everything that was already below
-// this section.
-// --------------------------------------------------
-
-// Example:
-// app.get('/api/orders', ...);
-// app.post('/api/orders', authMiddleware(), ...);
-// app.patch('/api/orders/:id/status', authMiddleware(), ...);
+app.use('/api/stores', storesRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/services', catalogRouter);
 
 // --------------------------------------------------
 // VITE
