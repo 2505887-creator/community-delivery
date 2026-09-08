@@ -1,110 +1,338 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Request, Response, NextFunction } from 'express';
+import type {
+  Request,
+  Response,
+  NextFunction,
+} from 'express';
+import jwt from 'jsonwebtoken';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl =
+  process.env.SUPABASE_URL;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.warn(
-    '[supabaseAdmin] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set. ' +
-      'Auth-protected routes will reject every request until these are configured.'
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  'dev_secret_change_me';
+
+if (!supabaseUrl) {
+  console.error(
+    '[auth] Missing SUPABASE_URL.'
   );
 }
 
-// Service-role client: full DB access, bypasses Row Level Security.
-// SERVER-ONLY. Never import this file from anything that ships to the browser.
-export const supabaseAdmin = createClient(supabaseUrl || '', serviceRoleKey || '', {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+if (!serviceRoleKey) {
+  console.error(
+    '[auth] Missing SUPABASE_SERVICE_ROLE_KEY.'
+  );
+}
+
+export const supabaseAdmin =
+  createClient(
+    supabaseUrl || '',
+    serviceRoleKey || '',
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+export type UserRole =
+  | 'tenant'
+  | 'provider'
+  | 'driver'
+  | 'merchant'
+  | 'admin';
+
+const validRoles: UserRole[] = [
+  'tenant',
+  'provider',
+  'driver',
+  'merchant',
+  'admin',
+];
 
 export type AuthedUser = {
   id: string;
   email: string;
-  role: 'tenant' | 'provider' | 'driver' | 'merchant' | 'admin';
+  role: UserRole;
   name: string | null;
 };
 
-export interface AuthedRequest extends Request {
+export interface AuthedRequest
+  extends Request {
   user?: AuthedUser;
 }
 
-function getBearerToken(req: Request): string | null {
-  const header = req.headers.authorization;
-  if (header?.startsWith('Bearer ')) {
-    return header.slice(7);
+function getToken(
+  req: Request
+): string | null {
+  /*
+   * Support both:
+   *
+   * 1. Supabase:
+   *    Authorization: Bearer <access_token>
+   *
+   * 2. Existing legacy application:
+   *    session cookie
+   */
+  const cookieToken =
+    req.cookies?.session;
+
+  if (cookieToken) {
+    return cookieToken;
   }
-  return null;
+
+  const header =
+    req.headers.authorization;
+
+  if (
+    !header ||
+    !header.startsWith('Bearer ')
+  ) {
+    return null;
+  }
+
+  const token =
+    header.slice(7).trim();
+
+  return token || null;
 }
 
-/**
- * Verifies the Supabase access token sent by the client (from
- * supabase.auth.getSession()) and loads the caller's profile/role.
- *
- * This is a defense-in-depth check at the API layer. The authoritative
- * access control is the Row Level Security policies in
- * supabase/migrations/0001_auth_and_rbac.sql — even if a route here had a
- * bug, Postgres itself would still refuse a cross-tenant read or write made
- * with the caller's own (anon-key) session.
- */
-export async function loadUserFromToken(token: string): Promise<AuthedUser | null> {
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data?.user) return null;
+function localJwtUser(
+  token: string
+): AuthedUser | null {
+  try {
+    const decoded =
+      jwt.verify(
+        token,
+        JWT_SECRET
+      ) as {
+        id?: string;
+        email?: string;
+        role?: UserRole;
+        name?: string;
+      };
 
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('id, email, name, role')
-    .eq('id', data.user.id)
-    .single();
+    if (
+      !decoded.id ||
+      !decoded.email ||
+      !decoded.role ||
+      !validRoles.includes(
+        decoded.role
+      )
+    ) {
+      return null;
+    }
 
-  if (profileError || !profile) return null;
-
-  return {
-    id: profile.id,
-    email: profile.email,
-    name: profile.name,
-    role: profile.role,
-  };
+    return {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      name:
+        decoded.name ?? null,
+    };
+  } catch {
+    return null;
+  }
 }
 
-/**
- * Express middleware. `requiredRoles` empty = any authenticated user.
- * Use requireAuth() with no roles just to require sign-in, or
- * requireAuth(['provider']) / requireAuth(['admin']) etc. to restrict.
- */
-export function requireAuth(requiredRoles: AuthedUser['role'][] = []) {
-  return async (req: AuthedRequest, res: Response, next: NextFunction) => {
-    const token = getBearerToken(req);
+export async function loadUserFromToken(
+  token: string
+): Promise<AuthedUser | null> {
+  /*
+   * First support the older Prisma/JWT
+   * authentication system.
+   */
+  const localUser =
+    localJwtUser(token);
+
+  if (localUser) {
+    return localUser;
+  }
+
+  /*
+   * Then validate the token against
+   * Supabase Auth.
+   */
+  if (
+    !supabaseUrl ||
+    !serviceRoleKey
+  ) {
+    return null;
+  }
+
+  try {
+    const {
+      data: authData,
+      error: authError,
+    } =
+      await supabaseAdmin.auth.getUser(
+        token
+      );
+
+    if (
+      authError ||
+      !authData.user
+    ) {
+      if (authError) {
+        console.error(
+          '[auth] Supabase token error:',
+          authError.message
+        );
+      }
+
+      return null;
+    }
+
+    const authUser =
+      authData.user;
+
+    const {
+      data: profile,
+      error: profileError,
+    } =
+      await supabaseAdmin
+        .from('profiles')
+        .select(
+          'id, email, name, role'
+        )
+        .eq(
+          'id',
+          authUser.id
+        )
+        .maybeSingle();
+
+    if (profileError) {
+      console.error(
+        '[auth] Profile lookup error:',
+        profileError.message
+      );
+
+      return null;
+    }
+
+    const metadata =
+      authUser.user_metadata ||
+      {};
+
+    const metadataRole =
+      metadata.role as
+        | UserRole
+        | undefined;
+
+    const role: UserRole =
+      profile &&
+      validRoles.includes(
+        profile.role as UserRole
+      )
+        ? (profile.role as UserRole)
+        : metadataRole &&
+            validRoles.includes(
+              metadataRole
+            )
+          ? metadataRole
+          : 'tenant';
+
+    return {
+      id: authUser.id,
+
+      email:
+        profile?.email ||
+        authUser.email ||
+        '',
+
+      name:
+        profile?.name ||
+        (
+          typeof metadata.name ===
+          'string'
+            ? metadata.name
+            : null
+        ),
+
+      role,
+    };
+  } catch (error) {
+    console.error(
+      '[auth] Unexpected authentication error:',
+      error
+    );
+
+    return null;
+  }
+}
+
+export function requireAuth(
+  requiredRoles: UserRole[] = []
+) {
+  return async (
+    req: AuthedRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const token =
+      getToken(req);
 
     if (!token) {
-      return res.status(401).json({ success: false, error: 'Missing bearer token' });
+      return res.status(401).json({
+        success: false,
+        error:
+          'Missing authentication token',
+      });
     }
 
-    const user = await loadUserFromToken(token);
+    const user =
+      await loadUserFromToken(
+        token
+      );
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid or expired session' });
+      return res.status(401).json({
+        success: false,
+        error:
+          'Invalid or expired session',
+      });
     }
 
-    if (requiredRoles.length > 0 && !requiredRoles.includes(user.role)) {
-      return res.status(403).json({ success: false, error: 'Forbidden: insufficient role' });
+    if (
+      requiredRoles.length > 0 &&
+      !requiredRoles.includes(
+        user.role
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        error:
+          'Forbidden: insufficient role',
+      });
     }
 
     req.user = user;
+
     next();
   };
 }
 
-/** Like requireAuth() but never rejects — just attaches req.user if present. */
 export function optionalAuth() {
-  return async (req: AuthedRequest, _res: Response, next: NextFunction) => {
-    const token = getBearerToken(req);
+  return async (
+    req: AuthedRequest,
+    _res: Response,
+    next: NextFunction
+  ) => {
+    const token =
+      getToken(req);
+
     if (token) {
-      const user = await loadUserFromToken(token);
-      if (user) req.user = user;
+      req.user =
+        (await loadUserFromToken(
+          token
+        )) ?? undefined;
     }
+
     next();
   };
 }

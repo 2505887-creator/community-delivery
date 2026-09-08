@@ -1,5 +1,13 @@
-import { Shield, ShoppingCart, User, Wrench, Truck, Store, MapPin, Bell, Search, LogIn } from 'lucide-react';
+import {
+  ShoppingCart,
+  MapPin,
+  Bell,
+  Search,
+  LogIn,
+} from 'lucide-react';
 import type { UserRole, Order } from '../types';
+
+
 
 interface NavbarProps {
   currentRole: UserRole;
@@ -39,16 +47,16 @@ export default function Navbar({
   const ongoingOrders = activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
 
   return (
-    <header id="main-header" className="sticky top-0 z-40 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header id="main-header" className="sticky top-0 z-40 bg-white/75 backdrop-blur-xl border-b border-white/60 shadow-[0_8px_30px_rgba(6,47,38,.08)] h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
       {/* Left: Brand Identity / Logo */}
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-white shadow-xs text-base">
+        <div className="w-8 h-8 bg-[#119a72] rounded-lg flex items-center justify-center font-bold text-white shadow-xs text-base">
           &Omega;
         </div>
         <div>
           <div className="flex items-center space-x-1.5">
             <span className="font-bold text-lg text-slate-900 tracking-tight">
-              Omni<span className="text-blue-600">Serve</span>
+              Omni<span className="text-[#119a72]">Serve</span>
             </span>
             <span className="text-[9px] uppercase tracking-wider font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded border border-slate-200">
               HIGH DENSITY

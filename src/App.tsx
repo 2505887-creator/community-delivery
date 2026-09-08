@@ -400,7 +400,7 @@ if (!user) {
   const latestActiveOrder = ongoingOrders[0] || null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex text-slate-900 selection:bg-blue-600 selection:text-white font-sans">
+    <div className="portal-shell min-h-screen bg-slate-50 flex text-slate-900 selection:bg-blue-600 selection:text-white font-sans">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -413,20 +413,33 @@ if (!user) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Main Header Navbar */}
         <Navbar
-          currentRole={currentRole}
-          onRoleChange={(role) => { if (user?.role === 'admin') setCurrentRole(role); else setCurrentRole(user?.role || 'tenant'); }}
-          cartCount={cartTotalCount}
-          onOpenCart={() => setIsCartOpen(true)}
-          activeOrders={orders}
-          onSelectOrder={(order) => setActiveTrackingOrder(order)}
-          tenantAddress={tenantAddress}
-          onChangeAddress={() => setIsAddressModalOpen(true)}
-          onOpenLogin={() => setIsLoginOpen(true)}
-          onOpenRegister={() => setIsRegisterOpen(true)}
-          user={user as unknown as typeof User}
-          onLogout={handleLogout}
-        />
-
+  currentRole={currentRole}
+  onRoleChange={(role) => {
+    if (user?.role === 'admin') {
+      setCurrentRole(role);
+    } else {
+      setCurrentRole(user?.role || 'tenant');
+    }
+  }}
+  cartCount={cartTotalCount}
+  onOpenCart={() => setIsCartOpen(true)}
+  activeOrders={orders}
+  onSelectOrder={(order) =>
+    setActiveTrackingOrder(order)
+  }
+  tenantAddress={tenantAddress}
+  onChangeAddress={() =>
+    setIsAddressModalOpen(true)
+  }
+  onOpenLogin={() =>
+    setIsLoginOpen(true)
+  }
+  onOpenRegister={() =>
+    setIsRegisterOpen(true)
+  }
+  user={user}
+  onLogout={handleLogout}
+/>
         {/* Dynamic Role Page Container */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
           

@@ -1,16 +1,17 @@
 import 'dotenv/config';
 import dotenv from 'dotenv';
 dotenv.config();
+
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
 import { Order, VerifiedPro, LocalStore, Driver } from './src/types';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+
 import driversRouter from './server/drivers';
 import servicesRouter from './server/services';
 import storesRouter from './server/stores';
@@ -19,26 +20,18 @@ import usersRouter from './server/users';
 import catalogRouter from './server/catalog';
 
 const app = express();
-const PORT = 3000;
-
+const PORT = Number(process.env.PORT || 3000);
 const prisma = new PrismaClient();
-
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
-
 app.use(
   cors({
     origin: process.env.APP_ORIGIN || 'http://localhost:3000',
     credentials: true,
-  })
+  }),
 );
-
-
-// --------------------------------------------------
-// AUTHENTICATION
-// --------------------------------------------------
 
 interface AuthRequest extends Request {
   user?: {
@@ -48,37 +41,29 @@ interface AuthRequest extends Request {
   };
 }
 
-function signToken(user: {
-  id: string;
-  email: string;
-  role: string;
-}) {
-  return jwt.sign(user, JWT_SECRET, {
-    expiresIn: '7d',
-  });
+function signToken(user: { id: string; email: string; role: string }) {
+  return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 }
 
-function getTokenFromReq(req: Request) {
-  const anyReq = req as any;
-
-  if (anyReq.cookies && anyReq.cookies.session) {
-    return anyReq.cookies.session;
-  }
+function getTokenFromReq(req: Request): string | null {
+  const cookieToken = req.cookies?.session;
+  if (cookieToken) return cookieToken;
 
   const auth = req.headers.authorization;
-
-  if (auth && auth.startsWith('Bearer ')) {
-    return auth.slice(7);
-  }
+  if (auth?.startsWith('Bearer ')) return auth.slice(7).trim() || null;
 
   return null;
 }
 
+/*
+ * Legacy/local JWT middleware is retained for backward compatibility.
+ * Supabase-backed application routes use server/lib/supabaseAdmin.ts.
+ */
 function authMiddleware(requiredRoles: string[] = []) {
   return async (
     req: AuthRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     const token = getTokenFromReq(req);
 
@@ -90,7 +75,15 @@ function authMiddleware(requiredRoles: string[] = []) {
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, JWT_SECRET) as {
+        id?: string;
+        email?: string;
+        role?: string;
+      };
+
+      if (!decoded.id || !decoded.email || !decoded.role) {
+        throw new Error('Invalid token payload');
+      }
 
       req.user = {
         id: decoded.id,
@@ -108,34 +101,41 @@ function authMiddleware(requiredRoles: string[] = []) {
         });
       }
 
-      next();
-    } catch (err) {
+      return next();
+    } catch {
       return res.status(401).json({
         success: false,
-        error: 'Invalid token',
+        error: 'Invalid or expired token',
       });
     }
   };
 }
 
-// --------------------------------------------------
-// HEALTH CHECK
-// --------------------------------------------------
-
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    message: 'Community Delivery API is running',
-  });
+app.get('/api/health', async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({
+      success: true,
+      message: 'OmniServe API is running',
+      database: 'connected',
+    });
+  } catch (error) {
+    console.error('[health]', error);
+    return res.status(503).json({
+      success: false,
+      message: 'OmniServe API is running',
+      database: 'unavailable',
+    });
+  }
 });
 
-// --------------------------------------------------
-// AUTH - REGISTER
-// --------------------------------------------------
-
+/*
+ * Legacy authentication endpoints remain available for compatibility.
+ * New frontend authentication is handled by Supabase Auth.
+ */
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, name, role } = req.body;
+    const { email, password, name, role } = req.body ?? {};
 
     if (!email || !password) {
       return res.status(400).json({
@@ -144,8 +144,9 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -155,15 +156,15 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
-const user = await prisma.user.create({
-  data: {
-    email,
-    passwordHash,
-    name: name || email.split('@')[0],
-    role: role || 'tenant',
-  },
-});
+    const passwordHash = await bcrypt.hash(String(password), 10);
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        passwordHash,
+        name: String(name || normalizedEmail.split('@')[0]).trim(),
+        role: role || 'tenant',
+      },
+    });
 
     const token = signToken({
       id: user.id,
@@ -187,9 +188,8 @@ const user = await prisma.user.create({
         role: user.role,
       },
     });
-  } catch (err) {
-    console.error('Register error:', err);
-
+  } catch (error) {
+    console.error('[auth:register]', error);
     return res.status(500).json({
       success: false,
       error: 'Registration failed',
@@ -197,13 +197,9 @@ const user = await prisma.user.create({
   }
 });
 
-// --------------------------------------------------
-// AUTH - LOGIN
-// --------------------------------------------------
-
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body ?? {};
 
     if (!email || !password) {
       return res.status(400).json({
@@ -212,23 +208,12 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid email or password',
-      });
-    }
-
-    const validPassword = await bcrypt.compare(
-      password,
-      user.passwordHash
-    );
-
-    if (!validPassword) {
+    if (!user || !(await bcrypt.compare(String(password), user.passwordHash))) {
       return res.status(401).json({
         success: false,
         error: 'Invalid email or password',
@@ -257,9 +242,8 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
         role: user.role,
       },
     });
-  } catch (err) {
-    console.error('Login error:', err);
-
+  } catch (error) {
+    console.error('[auth:login]', error);
     return res.status(500).json({
       success: false,
       error: 'Login failed',
@@ -267,141 +251,109 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
-// --------------------------------------------------
-// AUTH - ME
-// --------------------------------------------------
-
-app.get(
-  '/api/auth/me',
-  authMiddleware(),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: 'Not authenticated',
-        });
-      }
-
-      const user = await prisma.user.findUnique({
-        where: {
-          id: req.user.id,
-        },
-      });
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: 'User not found',
-        });
-      }
-
-      return res.json({
-        success: true,
-        data: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        },
-      });
-    } catch (err) {
-      console.error('Auth me error:', err);
-
-      return res.status(500).json({
+app.get('/api/auth/me', authMiddleware(), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
         success: false,
-        error: 'Failed to fetch current user',
+        error: 'Not authenticated',
       });
     }
-  }
-);
 
-// --------------------------------------------------
-// AUTH - LOGOUT
-// --------------------------------------------------
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('[auth:me]', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch current user',
+    });
+  }
+});
 
 app.post('/api/auth/logout', (_req: Request, res: Response) => {
   res.clearCookie('session');
-
   return res.json({
     success: true,
     message: 'Logged out successfully',
   });
 });
 
-// --------------------------------------------------
-// EXISTING DRIVER DATA
-// --------------------------------------------------
-
+/*
+ * Legacy public driver listing is kept for marketplace compatibility.
+ * Driver-specific onboarding/management is implemented by the router below.
+ */
 async function getDrivers(): Promise<Driver[]> {
-  try {
-    const drivers = await prisma.driver.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return drivers as unknown as Driver[];
-  } catch (error) {
-    console.error('Failed to fetch drivers:', error);
-
-    return [];
-  }
+  const drivers = await prisma.driver.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+  return drivers as unknown as Driver[];
 }
 
 app.get('/api/drivers', async (_req: Request, res: Response) => {
   try {
-    const drivers = await getDrivers();
-
-    res.json({
+    return res.json({
       success: true,
-      data: drivers,
+      data: await getDrivers(),
     });
-  } catch (err) {
-    console.error(err);
-
-    res.status(500).json({
+  } catch (error) {
+    console.error('[drivers:list]', error);
+    return res.status(500).json({
       success: false,
       error: 'Failed to fetch drivers',
     });
   }
 });
 
-// --------------------------------------------------
-// DRIVER ONBOARDING / KYC ROUTES
-// --------------------------------------------------
-//
-// This adds:
-// POST   /api/drivers/apply
-// GET    /api/drivers/pending
-// PATCH  /api/drivers/:id/approve
-// PATCH  /api/drivers/:id/reject
-// GET    /api/drivers/me
-//
-// It does NOT replace the existing GET /api/drivers above.
-// --------------------------------------------------
-
+/*
+ * Application API routers.
+ *
+ * Each router owns its endpoint-level authentication/authorization.
+ */
 app.use('/api/drivers', driversRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/stores', storesRouter);
 app.use('/api/orders', ordersRouter);
-
-app.use('/api/stores', storesRouter);
 app.use('/api/users', usersRouter);
-app.use('/api/services', catalogRouter);
+app.use('/api/catalog', catalogRouter);
 
-// --------------------------------------------------
-// VITE
-// --------------------------------------------------
+/*
+ * Unknown API routes should return JSON instead of the SPA.
+ */
+app.use('/api', (_req: Request, res: Response) => {
+  return res.status(404).json({
+    success: false,
+    error: 'API route not found',
+  });
+});
 
+/*
+ * Vite development middleware / production static serving.
+ */
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
   if (!isProduction) {
     const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-      },
+      server: { middlewareMode: true },
       appType: 'spa',
     });
 
@@ -416,12 +368,25 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, () => {
-    console.log(`Community Delivery running on http://localhost:${PORT}`);
+  const server = app.listen(PORT, () => {
+    console.log(`[server] OmniServe running on http://localhost:${PORT}`);
   });
+
+  const shutdown = async (signal: string) => {
+    console.log(`[server] ${signal} received; shutting down...`);
+
+    server.close(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    });
+  };
+
+  process.once('SIGINT', () => void shutdown('SIGINT'));
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
 }
 
-startServer().catch((error) => {
-  console.error('Failed to start server:', error);
+startServer().catch(async (error) => {
+  console.error('[server] Failed to start:', error);
+  await prisma.$disconnect();
   process.exit(1);
 });

@@ -1,4 +1,4 @@
-export type UserRole = 'tenant' | 'provider' | 'driver' | 'merchant';
+export type UserRole = 'tenant' | 'provider' | 'driver' | 'merchant'|'admin';
 
 export type ServiceCategory = 'plumbing' | 'electrical' | 'cleaning' | 'carpentry' | 'appliances';
 

@@ -16,3 +16,46 @@
 @media(max-width:1050px){.main-nav-links{gap:15px}.main-nav{gap:16px}.hero-inner{grid-template-columns:minmax(0,1fr) 410px;gap:25px}.phone{width:300px;height:550px}.floating-tag-top{right:-5px}.floating-tag-bottom{left:-5px}.feature-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:850px){.main-nav{display:none}.nav-toggle{display:grid}.hero-inner{grid-template-columns:1fr;padding:62px 0 56px}.hero-copy{max-width:760px}.hero-product{min-height:590px}.trust-strip{grid-template-columns:repeat(2,1fr)}.trust-stat:nth-child(2){border-right:0}.trust-stat:nth-child(-n+2){border-bottom:1px solid var(--border)}.how-grid,.about-grid{grid-template-columns:1fr;gap:40px}.about-photo{min-height:380px}.final-cta{grid-template-columns:1fr}}@media(max-width:600px){.landing-container{width:min(calc(100% - 28px),var(--max-width))}.brand-mark{width:38px;height:38px;border-radius:12px}.brand-copy strong{font-size:16px}.brand-copy small{font-size:8px}.mobile-nav-role-links{grid-template-columns:1fr}.mobile-nav-actions{grid-template-columns:1fr}.hero::before{background:linear-gradient(180deg,rgba(3,32,25,.9),rgba(4,45,35,.95)),url('https://images.unsplash.com/photo-1781504842018-c51ce0dac23f?auto=format&fit=crop&fm=jpg&q=82&w=1400');background-position:center}.hero-inner{padding:48px 0 45px}.hero-badge{font-size:9px;margin-bottom:24px}.hero h1{font-size:clamp(42px,13vw,58px)}.hero-description{font-size:14px}.hero-actions{flex-direction:column}.hero-actions button{width:100%}.hero-trust{display:grid;gap:9px}.hero-product{min-height:520px}.phone{width:260px;height:500px}.floating-tag{font-size:8px}.floating-tag-top{right:0;top:45px}.floating-tag-bottom{left:0;bottom:35px}.trust-strip{grid-template-columns:1fr}.trust-stat,.trust-stat:nth-child(2){justify-content:flex-start;border-right:0;border-bottom:1px solid var(--border);padding:12px 5px}.trust-stat:last-child{border-bottom:0}.landing-section{padding:72px 0}.feature-grid{grid-template-columns:1fr}.section-heading h2,.landing-section h2{font-size:36px}.about-photo{min-height:310px}.role-preview{padding:12px}.final-cta{padding:28px 22px}.footer-inner{align-items:flex-start;flex-direction:column}}
 @media(prefers-reduced-motion:reduce){.landing-page *{scroll-behavior:auto!important;transition:none!important}}
+
+/* OmniServe unified design system + auth surfaces */
+:root {
+  --os-green: #119a72;
+  --os-green-dark: #087653;
+  --os-green-deep: #062f26;
+  --os-cream: #f5f8f6;
+  --os-ink: #09251d;
+  --os-glass: rgba(255,255,255,.78);
+}
+
+.landing-nav {
+  background: rgba(6,47,38,.74);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 10px 40px rgba(0,0,0,.08);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  transition: background .25s ease, box-shadow .25s ease;
+}
+.landing-nav .brand-copy strong,.landing-nav .brand-copy small,.landing-nav .main-nav-links a { color:#fff; }
+.landing-nav .main-nav-links a { opacity:.78; }
+.landing-nav .main-nav-links a:hover { opacity:1; }
+.landing-nav .secondary-btn { background:rgba(255,255,255,.08); color:#fff; border-color:rgba(255,255,255,.22); }
+.landing-nav .secondary-btn:hover { background:rgba(255,255,255,.16); }
+.landing-nav .primary-btn { background:var(--os-green); color:#fff; }
+.landing-nav .primary-btn:hover { background:#18b884; }
+
+/* Shared authentication modal: intentionally uses the same deep-green visual language as the hero. */
+.auth-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(3,25,20,.76);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:auto}
+.auth-modal{position:relative;width:min(100%,470px);padding:30px;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:linear-gradient(145deg,rgba(8,55,43,.98),rgba(4,39,31,.98));box-shadow:0 30px 90px rgba(0,0,0,.32);color:#fff}
+.auth-register{width:min(100%,500px)}
+.auth-close{position:absolute;right:16px;top:16px;width:36px;height:36px;border:1px solid rgba(255,255,255,.13);border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.07);color:#dcece6;cursor:pointer}
+.auth-close:hover{background:rgba(255,255,255,.14)}
+.auth-brand{display:flex;align-items:center;gap:11px;margin-bottom:25px}.auth-brand-mark{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#1abc8b,#087653);font-weight:950;box-shadow:0 12px 28px rgba(17,154,114,.25)}.auth-brand strong{display:block;font-family:'Outfit',sans-serif;font-size:19px;letter-spacing:-.03em}.auth-brand strong span{color:#5fe0bd}.auth-brand small{display:block;color:#94b4aa;font-size:8px;margin-top:2px;letter-spacing:.02em}
+.auth-heading{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}.auth-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.09);color:#73e0c1}.auth-heading h2,.auth-success h2{font-family:'Outfit',sans-serif;font-size:28px;line-height:1.05;letter-spacing:-.04em;margin:0}.auth-heading p,.auth-success p{margin:6px 0 0;color:#a8c0b9;font-size:12px;line-height:1.6}
+.auth-role-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:18px 0}.auth-role-grid button{border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.055);color:#a8c0b9;border-radius:11px;padding:10px 5px;font-size:10px;font-weight:850;cursor:pointer;transition:.18s}.auth-role-grid button:hover{background:rgba(255,255,255,.1);color:#fff}.auth-role-grid button.active{background:#fff;color:var(--os-ink);border-color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+.auth-form{display:grid;gap:14px}.auth-form label{display:grid;gap:6px;color:#d9e8e3;font-size:10px;font-weight:850;letter-spacing:.04em;text-transform:uppercase}.auth-input{min-height:46px;display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid rgba(255,255,255,.14);border-radius:13px;background:rgba(255,255,255,.07);color:#79dabe}.auth-input:focus-within{border-color:#5fe0bd;box-shadow:0 0 0 3px rgba(95,224,189,.1)}.auth-input input{width:100%;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:12px;text-transform:none;letter-spacing:0}.auth-input input::placeholder{color:#78958d}.auth-input .no-icon-input{padding-left:0}.password-toggle{border:0;background:transparent;color:#9eb8b0;cursor:pointer;display:grid;place-items:center}.auth-primary,.auth-secondary{width:100%;min-height:48px;border-radius:13px;border:1px solid transparent;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:900;cursor:pointer;transition:.2s}.auth-primary{background:#16ad80;color:#fff;box-shadow:0 14px 30px rgba(17,154,114,.22)}.auth-primary:hover{background:#20bd8f;transform:translateY(-1px)}.auth-primary:disabled{opacity:.55;cursor:not-allowed;transform:none}.auth-secondary{margin-top:10px;background:rgba(255,255,255,.07);color:#fff;border-color:rgba(255,255,255,.14)}.auth-secondary:hover{background:rgba(255,255,255,.12)}.auth-alert{padding:11px 12px;border:1px solid rgba(255,126,126,.25);border-radius:12px;background:rgba(180,42,42,.16);color:#ffd1d1;font-size:11px;line-height:1.5}.auth-link{display:block;margin:13px auto 0;border:0;background:none;color:#6ee2c0;font-size:11px;font-weight:850;cursor:pointer}.auth-link:hover{text-decoration:underline}.auth-foot{display:flex;justify-content:center;align-items:center;gap:5px;margin:18px 0 0;color:#78978e;font-size:9px;text-align:center}.auth-success{text-align:center}.auth-success .auth-brand{justify-content:center}.auth-success-icon{width:64px;height:64px;margin:8px auto 18px;border-radius:20px;display:grid;place-items:center;background:rgba(17,154,114,.17);color:#65e1bf;border:1px solid rgba(101,225,191,.22)}.auth-success p{margin:12px auto 22px;max-width:360px}
+
+/* Portal pages inherit the same palette without forcing every existing Tailwind component to be rewritten. */
+body{background:var(--os-cream)}
+.portal-shell{background:radial-gradient(circle at 20% 0%,rgba(17,154,114,.08),transparent 30%),var(--os-cream)}
+
+@media(max-width:600px){.auth-modal{padding:24px 18px;border-radius:22px}.auth-heading h2,.auth-success h2{font-size:24px}.auth-role-grid{grid-template-columns:repeat(2,1fr)}.auth-overlay{padding:10px}.landing-nav{background:rgba(6,47,38,.88)}}

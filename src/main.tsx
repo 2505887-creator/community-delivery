@@ -32,23 +32,13 @@ function Root() {
     return <ProviderSignup />;
   }
 
-  // Landing page route - only show if NOT authenticated
-  if (pathname === '/' && !user) {
-    return <LandingPage />;
-  }
-
-  // If user is authenticated, always show the App (portal)
+  // IF AUTHENTICATED - Show the App (portal)
   if (user) {
     return <App />;
   }
 
-  // If trying to access any other route without authentication, redirect to landing
-  if (pathname !== '/' && !user) {
-    window.location.replace('/');
-    return null;
-  }
-
-  return null;
+  // IF NOT AUTHENTICATED - Always show the Landing Page
+  return <LandingPage />;
 }
 
 createRoot(document.getElementById('root')!).render(

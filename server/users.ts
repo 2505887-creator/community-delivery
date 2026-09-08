@@ -69,7 +69,7 @@ router.get('/stats', requireHybridAuth(['admin']), async (_req: AuthedRequest, r
 router.get('/admin/stores', requireHybridAuth(['admin']), async (_req: AuthedRequest, res: Response) => {
   try {
     const stores = await prisma.localStore.findMany({
-      include: { StoreItem: true },
+      include: { items: true },
       orderBy: { createdAt: 'desc' },
     });
     res.json({ success: true, data: stores.map(mapStore) });
@@ -82,7 +82,7 @@ router.get('/admin/stores', requireHybridAuth(['admin']), async (_req: AuthedReq
 router.get('/admin/orders', requireHybridAuth(['admin']), async (_req: AuthedRequest, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
-      include: { Driver: true, LocalStore: true, VerifiedPro: true },
+      include: { driver: true, store: true, provider: true },
       orderBy: { createdAt: 'desc' },
     });
     res.json({ success: true, data: orders.map(mapOrder) });
