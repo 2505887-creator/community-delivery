@@ -17,6 +17,12 @@ function getToken(req: AuthedRequest): string | null {
 
 async function resolveUser(req: AuthedRequest): Promise<AuthedUser | null> {
   const token = getToken(req);
+
+  console.log('[auth] request token:', {
+    present: Boolean(token),
+    length: token?.length || 0,
+  });
+
   if (!token) return null;
 
   try {

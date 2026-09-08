@@ -1,71 +1,386 @@
-# Community Delivery
+# OmniServe — International Community Delivery & Services Platform
 
-Community Delivery is a marketplace platform that connects providers (drivers, couriers, and sellers) with customers for on-demand delivery and commerce — combining the on-demand transportation model (like Uber) with a multi-vendor marketplace (like Alibaba).
+OmniServe is a full-stack marketplace and on-demand delivery platform built for local and international expansion. It connects customers with verified service professionals, drivers, merchants and local stores through a unified account, order and operations system.
 
-This repository contains the backend and frontend for the service, with integrations to Supabase for auth and database, and Redis for caching.
+The current implementation is a **React + Vite + TypeScript frontend**, an **Express + TypeScript API**, **Prisma/PostgreSQL** persistence, and **Supabase Auth**. The system keeps the existing provider/customer marketplace flow while adding account settings, notifications, auditability, administration and transactional email infrastructure.
 
-Key concepts
-- Provider: a person or business offering delivery or goods/services.
-- Customer: a user requesting deliveries or buying items.
-- Job / Order: a delivery or purchase request assigned to a provider.
-- Dashboard (Provider): the web interface where providers see jobs, earnings, stats, and manage availability.
+---
 
-Providers Dashboard (overview)
-- Authentication: sign in with Supabase auth (email / OAuth).
-- Active Jobs list: accepted, in-progress, and completed jobs with status updates and navigation links.
-- Earnings & Payouts: total earnings, pending payouts, payout history and simple export.
-- Availability / Schedule: toggle availability and set service areas.
-- Inbox / Messages: messages from customers and system notifications.
-- Inventory / Listings (for sellers): manage products, prices, and stock.
-- Analytics: simple charts for trips, revenue, acceptance rate, completion rate.
-- Settings: profile, vehicle info, bank/payment details (do not store raw bank details in repo), notification preferences.
+## 1. Product model
 
-Getting started (local development)
-1. Clone the repo
-   git clone https://github.com/Alice34mung3ai/community-delivery.git
-   cd community-delivery
+### Customer
+Customers can:
+- Discover verified service professionals.
+- Book a professional.
+- Order from local stores.
+- Request transport/cargo.
+- Track active orders.
+- View order history.
+- Receive in-app notifications.
+- Manage profile, preferences and security.
 
-2. Install dependencies
-   # Example: Node.js project
-   npm install
+### Provider
+Providers can:
+- Register through Supabase Auth.
+- Confirm their email.
+- Create a provider workspace automatically after first confirmed sign-in.
+- Maintain their customer-facing service listing.
+- Set availability.
+- Receive and update service jobs.
+- See verification state.
 
-3. Create .env from .env.example and fill values
-   cp .env.example .env
-   # Fill in SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, etc.
+A provider is **not visible to customers until `VerifiedPro.isVerified` is true**. This prevents unverified registrations from leaking into the public marketplace.
 
-4. Setup Supabase
-   - Create a Supabase project at https://app.supabase.com
-   - Create the required tables (users, providers, jobs, listings, payouts, messages). Migrations or SQL files should be in the migrations/ directory if present.
-   - Copy the project URL and anon/service keys into your .env
+### Driver
+Drivers have their own dashboard and order assignment model. Driver identity and verification fields live in the `Driver` model.
 
-5. Run database migrations (example)
-   npm run migrate
+### Merchant / store
+Stores and store inventory are represented by `LocalStore` and `StoreItem`. Store deliveries use the same `Order` lifecycle.
 
-6. Start the app
-   npm run dev
+### Administrator
+Admins have access to the control plane for:
+- Users and roles.
+- Providers.
+- Orders.
+- Email jobs.
+- Email templates.
+- Audit events.
+- System settings.
 
-Environment variables
-See .env.example for a full list. Important ones for Supabase:
-- SUPABASE_URL
-- SUPABASE_ANON_KEY
-- SUPABASE_SERVICE_ROLE_KEY
-- DATABASE_URL
-- NEXT_PUBLIC_SUPABASE_URL (if frontend)
-- NEXT_PUBLIC_SUPABASE_ANON_KEY (if frontend)
+---
 
-Provider Dashboard: Implementation notes
-- Architecture: frontend (React/Next.js or similar) + backend serverless or Node server + Supabase Postgres + Redis cache.
-- Realtime: use Supabase Realtime or WebSockets to push job updates (accepted, started, completed).
-- Authorization: providers should be a role in Supabase auth. Use row-level security (RLS) to restrict access to provider-specific data.
-- Notifications: integrate with push notifications (FCM/APNs) or SMS for critical updates.
-- Maps & routing: integrate with a maps provider (Mapbox, Google Maps) for navigation and service-area geofencing.
+## 2. Architecture
 
-Contributing
-- Create feature branches and open PRs targeting main.
-- Follow repository linting and formatting rules.
+```text
+Browser
+  │
+  ├── React 19 + Vite + TypeScript
+  │      ├── AuthContext
+  │      ├── ThemeContext
+  │      ├── Customer portal
+  │      ├── Provider dashboard
+  │      ├── Driver dashboard
+  │      ├── Merchant dashboard
+  │      ├── Account settings
+  │      ├── Notification center
+  │      └── Admin control plane
+  │
+  └── Supabase Auth access token
+             │
+             ▼
+Express API
+  │
+  ├── Hybrid authentication
+  ├── Role authorization
+  ├── Orders
+  ├── Services / providers
+  ├── Stores / catalog
+  ├── Drivers
+  ├── Account
+  └── Admin
+             │
+             ▼
+Prisma ORM
+             │
+             ▼
+PostgreSQL / Supabase Postgres
 
-License
-- Add a license file (e.g., MIT) if this is your intent.
+Email queue ──► transactional provider (Resend)
+Audit events ──► PostgreSQL
+Notifications ──► PostgreSQL + polling UI
+```
 
-Contact
-- For questions, open an issue or contact the maintainers.
+---
+
+## 3. Important directories
+
+```text
+community-delivery/
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/
+│   ├── seed.js
+│   └── seed-platform.mjs
+│
+├── server/
+│   ├── account.ts
+│   ├── admin.ts
+│   ├── catalog.ts
+│   ├── drivers.ts
+│   ├── orders.ts
+│   ├── services.ts
+│   ├── stores.ts
+│   ├── users.ts
+│   ├── uploads.ts
+│   └── lib/
+│       ├── audit.ts
+│       ├── emailQueue.ts
+│       ├── hybridAuth.ts
+│       ├── notifications.ts
+│       ├── orderRules.ts
+│       ├── supabaseAdmin.ts
+│       └── mappers.ts
+│
+├── src/
+│   ├── App.tsx
+│   ├── contexts/
+│   │   ├── AuthContext.tsx
+│   │   └── ThemeContext.tsx
+│   ├── components/
+│   │   ├── NotificationCenter.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── ProviderDashboard.tsx
+│   │   └── ...
+│   └── pages/
+│       ├── AccountSettings.tsx
+│       ├── AdminDashboard.tsx
+│       ├── ProviderSignup.tsx
+│       └── tenant/
+│
+├── server.ts
+├── package.json
+├── tsconfig.json
+├── tsconfig.server.json
+└── .env.example
+```
+
+---
+
+# 4. Authentication and authorization
+
+Supabase Auth is the primary authentication system.
+
+The browser obtains a Supabase session and sends:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+The API validates the token through `server/lib/supabaseAdmin.ts`.
+
+For backwards compatibility, the API can also validate the existing local JWT cookie/session path. New application functionality should use Supabase Auth.
+
+### Roles
+
+```text
+tenant
+provider
+driver
+merchant
+admin
+```
+
+Authorization is enforced server-side. Hiding a button in React is not considered authorization.
+
+### Provider registration
+
+Provider registration stores important onboarding metadata in Supabase `user_metadata`:
+
+```text
+name
+role
+phone
+licenseNumber
+vehicle
+category
+```
+
+After email confirmation and successful sign-in, `/api/services/ensure` creates or completes the provider workspace.
+
+---
+
+# 5. Provider → customer synchronization
+
+`VerifiedPro` is the authoritative service listing.
+
+### Customer
+
+```http
+GET /api/services
+```
+
+Customers receive verified providers only.
+
+### Provider
+
+```http
+GET   /api/services/mine
+POST  /api/services/ensure
+POST  /api/services
+PATCH /api/services/:id
+```
+
+A provider can edit their listing, including:
+
+- title
+- hourly rate
+- phone
+- service area
+- years of experience
+- specialties
+- biography
+
+The customer application refreshes marketplace provider data periodically while visible. Orders store the exact `VerifiedPro.id`, so both sides reference the same provider record.
+
+---
+
+# 6. Order lifecycle
+
+The canonical order states are:
+
+```text
+pending
+assigned
+en_route
+arrived
+in_progress
+completed
+cancelled
+```
+
+The API prevents normal status changes from moving backwards.
+
+Every significant order transition also creates an `OrderEvent`.
+
+Notifications are generated for important customer/provider events such as:
+
+- order creation
+- provider assignment
+- order status changes
+
+---
+
+# 7. Account platform
+
+The account API is under `/api/account`.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/account/me` | Profile + preferences |
+| PATCH | `/api/account/profile` | Update profile |
+| GET | `/api/account/preferences` | Load preferences |
+| PATCH | `/api/account/preferences` | Save preferences |
+| GET | `/api/account/notifications` | Notification inbox |
+| POST | `/api/account/notifications/:id/read` | Mark one read |
+| POST | `/api/account/notifications/read-all` | Mark all read |
+| GET | `/api/account/notification-preferences` | Notification channels |
+| PATCH | `/api/account/notification-preferences/:type` | Channel preferences |
+| POST | `/api/account/password` | Server-side password update |
+| POST | `/api/account/email-change` | Request confirmed email change |
+| DELETE | `/api/account` | Delete Auth account |
+
+The `/settings` frontend contains:
+
+- profile
+- phone
+- timezone
+- locale
+- currency
+- theme
+- email preferences
+- push preference
+- password update
+- email change
+- account deletion
+
+---
+
+# 8. Theme system
+
+Themes are:
+
+```text
+system
+light
+dark
+```
+
+`ThemeContext` applies the theme immediately in the browser and persists the preference through `/api/account/preferences` when a user is authenticated.
+
+System mode listens for OS color-scheme changes.
+
+---
+
+# 9. Notifications
+
+Notifications are stored in PostgreSQL rather than only in browser memory.
+
+The `Notification` model supports:
+
+```text
+id
+userId
+type
+title
+message
+data
+readAt
+createdAt
+```
+
+`NotificationPreference` controls:
+
+```text
+inApp
+email
+push
+```
+
+The frontend notification center polls while the application is visible. This is deliberately simple and reliable for the current platform. Supabase Realtime/WebSockets can be added later without changing the persistence model.
+
+---
+
+# 10. Transactional email
+
+Email is database-backed.
+
+```text
+Application event
+      ↓
+EmailJob
+      ↓
+Email worker
+      ↓
+Resend
+      ↓
+Recipient
+```
+
+`EmailJob` records:
+
+- recipient
+- template
+- payload
+- attempt count
+- status
+- provider message ID
+- failure reason
+- scheduling time
+
+Statuses:
+
+```text
+pending
+processing
+sent
+failed
+dead_letter
+```
+
+Retries use exponential backoff and eventually enter `dead_letter`.
+
+### Templates
+
+Templates are stored in `EmailTemplate` and seeded with:
+
+```text
+admin_test
+provider_welcome
+security_alert
+```
+
+HTML interpolation escapes user-controlled values to reduce injection risk.
+
+### Production email
+
+Configure a transactional provider and authenticate your sending 

@@ -5,12 +5,7 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
-
-import type {
-  Session,
-  AuthChangeEvent,
-} from '@supabase/supabase-js';
-
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import { UserRole } from '../types';
 
@@ -43,15 +38,13 @@ interface AuthContextValue {
     email: string,
     password: string,
     name: string,
-    role: UserRole
+    role: UserRole,
+    metadata?: Record<string, unknown>
   ) => Promise<SignUpResult>;
 
   resendConfirmation: (
     email: string
-  ) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
+  ) => Promise<{ success: boolean; error?: string }>;
 
   signIn: (
     email: string,
@@ -66,50 +59,31 @@ interface AuthContextValue {
 
   sendPasswordReset: (
     email: string
-  ) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
+  ) => Promise<{ success: boolean; error?: string }>;
 
   updatePassword: (
     newPassword: string
-  ) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(
-  undefined
-);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const ctx = useContext(AuthContext);
 
-  if (!context) {
-    throw new Error(
-      'useAuth must be used within AuthProvider'
-    );
+  if (!ctx) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
 
-  return context;
+  return ctx;
 };
 
-const VALID_ROLES: Array<UserRole | 'admin'> = [
-  'tenant',
-  'provider',
-  'driver',
-  'merchant',
-  'admin',
-];
-
-function isUserRole(
+const isUserRole = (
   value: unknown
-): value is UserRole | 'admin' {
-  return VALID_ROLES.includes(
-    String(value) as UserRole | 'admin'
+): value is UserRole | 'admin' =>
+  ['tenant', 'provider', 'driver', 'merchant', 'admin'].includes(
+    String(value)
   );
-}
 
 async function loadProfile(
   session: Session | null
@@ -119,7 +93,6 @@ async function loadProfile(
   }
 
   const metadata = session.user.user_metadata || {};
-
   const metadataRole = metadata.role;
 
   const fallback: NonNullable<PublicUser> = {
@@ -196,10 +169,8 @@ export function AuthProvider({
 
     const initialize = async () => {
       try {
-        const {
-          data,
-          error,
-        } = await supabase.auth.getSession();
+        const { data, error } =
+          await supabase.auth.getSession();
 
         if (error) {
           throw error;
@@ -211,13 +182,9 @@ export function AuthProvider({
 
         setSession(data.session);
 
-        const profile = await loadProfile(
-          data.session
+        setUser(
+          await loadProfile(data.session)
         );
-
-        if (mounted) {
-          setUser(profile);
-        }
       } catch (error) {
         console.error(
           '[Auth] Session initialization failed:',
@@ -261,13 +228,11 @@ export function AuthProvider({
             return;
           }
 
-          const profile =
-            await loadProfile(newSession);
+          setUser(
+            await loadProfile(newSession)
+          );
 
-          if (mounted) {
-            setUser(profile);
-            setLoading(false);
-          }
+          setLoading(false);
         }, 0);
 
         if (event === 'SIGNED_OUT') {
@@ -287,7 +252,8 @@ export function AuthProvider({
     email: string,
     password: string,
     name: string,
-    role: UserRole
+    role: UserRole,
+    metadata: Record<string, unknown> = {}
   ): Promise<SignUpResult> => {
     if (!SELF_SERVICE_ROLES.includes(role)) {
       return {
@@ -308,31 +274,21 @@ export function AuthProvider({
     const normalizedEmail =
       email.trim().toLowerCase();
 
-    const cleanName = name.trim();
+    const { data, error } =
+      await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            role,
+            ...metadata,
+          },
 
-    if (!cleanName) {
-      return {
-        success: false,
-        error: 'Please provide your name.',
-      };
-    }
-
-    const {
-      data,
-      error,
-    } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        data: {
-          name: cleanName,
-          role,
+          emailRedirectTo:
+            `${window.location.origin}/auth/callback`,
         },
-
-        emailRedirectTo:
-          `${window.location.origin}/auth/callback`,
-      },
-    });
+      });
 
     if (error) {
       return {
@@ -359,37 +315,29 @@ export function AuthProvider({
   const resendConfirmation = async (
     email: string
   ) => {
-    const {
-      error,
-    } = await supabase.auth.resend({
-      type: 'signup',
-      email:
-        email.trim().toLowerCase(),
-    });
+    const { error } =
+      await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase(),
+      });
 
-    if (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: true,
-    };
+    return error
+      ? {
+          success: false,
+          error: error.message,
+        }
+      : {
+          success: true,
+        };
   };
 
   const signIn = async (
     email: string,
     password: string
   ) => {
-    const {
-      data,
-      error,
-    } =
+    const { data, error } =
       await supabase.auth.signInWithPassword({
-        email:
-          email.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
         password,
       });
 
@@ -418,28 +366,15 @@ export function AuthProvider({
     const profile =
       await loadProfile(data.session);
 
-    /*
-     * PROVIDER WORKSPACE INITIALIZATION
-     *
-     * A provider is still a normal Supabase Auth
-     * user. The application role identifies them as
-     * a provider.
-     *
-     * Once authenticated, the backend guarantees
-     * that a VerifiedPro record exists for the same
-     * Supabase user ID.
-     */
     if (profile?.role === 'provider') {
       try {
         const response = await fetch(
           '/api/services/ensure',
           {
             method: 'POST',
-
             headers: {
               Authorization:
                 `Bearer ${data.session.access_token}`,
-
               'Content-Type':
                 'application/json',
             },
@@ -459,11 +394,6 @@ export function AuthProvider({
           );
         }
       } catch (error) {
-        /*
-         * Authentication itself must not fail simply
-         * because the provider workspace endpoint is
-         * temporarily unavailable.
-         */
         console.warn(
           '[Auth] Provider workspace initialization error:',
           error
@@ -473,15 +403,13 @@ export function AuthProvider({
 
     return {
       success: true,
-      role:
-        profile?.role || 'tenant',
+      role: profile?.role || 'tenant',
     };
   };
 
   const signOut = async () => {
-    const {
-      error,
-    } = await supabase.auth.signOut();
+    const { error } =
+      await supabase.auth.signOut();
 
     if (error) {
       console.error(
@@ -497,9 +425,7 @@ export function AuthProvider({
   const sendPasswordReset = async (
     email: string
   ) => {
-    const {
-      error,
-    } =
+    const { error } =
       await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
         {
@@ -508,46 +434,32 @@ export function AuthProvider({
         }
       );
 
-    if (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: true,
-    };
+    return error
+      ? {
+          success: false,
+          error: error.message,
+        }
+      : {
+          success: true,
+        };
   };
 
   const updatePassword = async (
     newPassword: string
   ) => {
-    if (newPassword.length < 8) {
-      return {
-        success: false,
-        error:
-          'Password must be at least 8 characters.',
-      };
-    }
-
-    const {
-      error,
-    } =
+    const { error } =
       await supabase.auth.updateUser({
         password: newPassword,
       });
 
-    if (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: true,
-    };
+    return error
+      ? {
+          success: false,
+          error: error.message,
+        }
+      : {
+          success: true,
+        };
   };
 
   return (

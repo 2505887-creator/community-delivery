@@ -4,6 +4,7 @@ import {
   requireAuth,
   optionalAuth,
   AuthedRequest,
+  supabaseAdmin,
 } from './lib/supabaseAdmin';
 
 const prisma = new PrismaClient();
@@ -67,12 +68,18 @@ function serializePro(pro: any) {
 router.get(
   '/',
   optionalAuth(),
-  async (_req: AuthedRequest, res: Response) => {
+  async (req: AuthedRequest, res: Response) => {
     try {
+      // Customers only see verified providers. A provider also receives their
+      // own listing so the dashboard can edit it even while verification is pending.
+      const actor = req.user;
+      const where: any = actor?.role === 'provider'
+        ? { OR: [{ isVerified: true }, { userId: actor.id }] }
+        : { isVerified: true };
+
       const pros = await prisma.verifiedPro.findMany({
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where,
+        orderBy: { createdAt: 'desc' },
       });
 
       return res.json({
@@ -116,6 +123,65 @@ router.get(
       return res.status(500).json({
         success: false,
         error: 'Failed to load your service listing',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/services/ensure
+ *
+ * Creates a minimal provider workspace record after the provider has
+ * confirmed their Supabase email and signed in. This makes the auth flow
+ * deterministic even when the provider used the generic registration modal.
+ * The provider can complete/edit the listing later with PATCH /:id.
+ */
+router.post(
+  '/ensure',
+  requireAuth(['provider']),
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      const user = req.user!;
+      const { data: authUserResult } = await supabaseAdmin.auth.admin.getUserById(user.id);
+      const metadata = authUserResult.user?.user_metadata ?? {};
+      const existing = await prisma.verifiedPro.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (existing) {
+        return res.json({ success: true, data: serializePro(existing), created: false });
+      }
+
+      const created = await prisma.verifiedPro.create({
+        data: {
+          userId: user.id,
+          name: user.name?.trim() || user.email.split('@')[0] || 'Provider',
+          category: ['plumbing','electrical','cleaning','carpentry','appliances'].includes(String(metadata.category)) ? String(metadata.category) as any : 'plumbing',
+          title: metadata.title ? String(metadata.title) : 'Local service professional',
+          hourlyRate: 0,
+          isVerified: false,
+          isOnline: false,
+          licenseNumber: metadata.licenseNumber ? String(metadata.licenseNumber) : null,
+          yearsExperience: 0,
+          distanceMiles: 0,
+          responseTimeMin: 30,
+          specialties: [],
+          badges: [],
+          phone: metadata.phone ? String(metadata.phone) : '',
+          completedJobs: 0,
+          bio: metadata.vehicle ? `Equipment / vehicle: ${String(metadata.vehicle)}` : 'Complete your provider profile to start receiving jobs.',
+          lat: -1.2864,
+          lng: 36.8172,
+          address: 'Nairobi, Kenya',
+        },
+      });
+
+      return res.status(201).json({ success: true, data: serializePro(created), created: true });
+    } catch (error) {
+      console.error('Ensure provider service error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to initialize your provider workspace',
       });
     }
   }

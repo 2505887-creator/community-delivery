@@ -1,7 +1,7 @@
+import NotificationCenter from './NotificationCenter';
 import {
   ShoppingCart,
   MapPin,
-  Bell,
   Search,
   LogIn,
 } from 'lucide-react';
@@ -111,14 +111,7 @@ export default function Navbar({
           </button>
         )}
 
-        {/* Notification Bell */}
-        <div
-          className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-slate-200 text-slate-600 transition-colors relative"
-          title="Notifications"
-        >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full"></span>
-        </div>
+        {user && <NotificationCenter />}
 
         {/* Shopping Cart Button */}
         <button
@@ -160,6 +153,10 @@ export default function Navbar({
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Signed in</span>
               <span className="text-xs font-semibold text-slate-700 truncate max-w-[160px]">{user?.name || user?.email || 'User'}</span>
             </div>
+
+            <button onClick={() => window.location.href='/settings'} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded-md border border-transparent hover:bg-slate-100">Settings</button>
+
+            {user.role === 'admin' && <button onClick={() => window.location.href='/admin'} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded-md border border-transparent hover:bg-slate-100">Admin</button>}
 
             <button
               id="header-logout-btn"

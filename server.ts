@@ -18,6 +18,9 @@ import storesRouter from './server/stores';
 import ordersRouter from './server/orders';
 import usersRouter from './server/users';
 import catalogRouter from './server/catalog';
+import accountRouter from './server/account';
+import adminRouter from './server/admin';
+import { processEmailQueue } from './server/lib/emailQueue';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -334,6 +337,8 @@ app.use('/api/stores', storesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/catalog', catalogRouter);
+app.use('/api/account', accountRouter);
+app.use('/api/admin', adminRouter);
 
 /*
  * Unknown API routes should return JSON instead of the SPA.
@@ -348,6 +353,8 @@ app.use('/api', (_req: Request, res: Response) => {
 /*
  * Vite development middleware / production static serving.
  */
+const emailWorker = process.env.ENABLE_EMAIL_WORKER !== 'false' ? setInterval(() => processEmailQueue().catch(e => console.error('[email-worker]', e)), 15000) : null;
+
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
