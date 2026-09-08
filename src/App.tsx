@@ -85,15 +85,14 @@ export default function App() {
 
 
   if (authLoading) {
-    return <div className="landing-loading"><div className="landing-loading-mark">OS</div><span>Loading your OmniServe portal…</span></div>;
-  }
-  if (!user) {
-    window.location.replace('/');
-    return null;
-  }
-  // Attach the caller's Supabase access token so Express can identify who
-  // is making the request (see server/lib/supabaseAdmin.ts requireAuth()).
-  // Row Level Security in Postgres is the authoritative check either way.
+  return <div className="landing-loading"><div className="landing-loading-mark">OS</div><span>Loading your OmniServe portal…</span></div>;
+}
+
+// This component should ONLY render when user is authenticated
+// (main.tsx handles redirecting unauthenticated users to landing page)
+if (!user) {
+  return null;
+}
   const authHeaders = (): HeadersInit =>
     session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 
