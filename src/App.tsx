@@ -462,7 +462,24 @@ if (!user) {
           )}
 
           {/* ---------------- TENANT MODE ---------------- */}
-          {currentRole === 'tenant' && <TenantDashboard tenantAddress={tenantAddress} pros={pros} stores={stores} orders={orders} tenantTab={tenantTab} setTenantTab={setTenantTab} proCategoryFilter={proCategoryFilter} setProCategoryFilter={setProCategoryFilter} proSearchQuery={proSearchQuery} setProSearchQuery={setProSearchQuery} cartItems={cartItems} latestActiveOrder={latestActiveOrder} />}
+           {currentRole === 'tenant' && (
+             <TenantDashboard
+                tenantAddress={tenantAddress}
+                pros={pros}
+                stores={stores}
+                orders={orders}
+                tenantTab={tenantTab}
+                setTenantTab={setTenantTab}
+                proCategoryFilter={proCategoryFilter}
+                setProCategoryFilter={setProCategoryFilter} 
+                proSearchQuery={proSearchQuery}
+                setProSearchQuery={setProSearchQuery}
+                cartItems={cartItems}
+                latestActiveOrder={latestActiveOrder}
+                onBookPro={(pro) => setSelectedProForBooking(pro)}
+                onTrackOrder={(order) => setActiveTrackingOrder(order)}
+              />
+            )}
           {currentRole !== 'tenant' && false && (
             <div className="space-y-6">
               

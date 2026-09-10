@@ -11,7 +11,7 @@
     "lint": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev --name init",
-    "db:seed": "node prisma/seed.mjs",
+    "db:seed": "node prisma/seed.cjs",
     "db:seed-platform": "node prisma/seed-platform.mjs",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc --noEmit",
     "test": "vitest run",

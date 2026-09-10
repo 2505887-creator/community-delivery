@@ -49,7 +49,7 @@ export default function BookingModal({
     onConfirmBooking({
       issueDescription,
       urgency,
-      scheduledFor: bookingTimeType === 'asap' ? 'ASAP (Immediate Dispatch)' : selectedDate,
+      scheduledFor: bookingTimeType === 'asap' ? undefined : selectedDate,
       notes,
       subtotal,
       total,

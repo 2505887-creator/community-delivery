@@ -73,10 +73,13 @@ router.get(
       // Customers only see verified providers. A provider also receives their
       // own listing so the dashboard can edit it even while verification is pending.
       const actor = req.user;
-      const where: any = actor?.role === 'provider'
-        ? { OR: [{ isVerified: true }, { userId: actor.id }] }
-        : { isVerified: true };
-
+      const where: any = actor?.role === 'provider'? {
+        OR: [
+          { isVerified: true },
+          { userId: actor.id },
+        ],
+      }
+    : {};
       const pros = await prisma.verifiedPro.findMany({
         where,
         orderBy: { createdAt: 'desc' },
