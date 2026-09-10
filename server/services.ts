@@ -1,13 +1,12 @@
+import { prisma } from './lib/prisma';
 import express, { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import {
   requireAuth,
   optionalAuth,
   AuthedRequest,
   supabaseAdmin,
 } from './lib/supabaseAdmin';
-
-const prisma = new PrismaClient();
+import { cleanString, finiteNumber, validCoordinate, SERVICE_CATEGORIES } from './lib/validation';
 
 const router = express.Router();
 
@@ -216,6 +215,24 @@ router.post(
 
       const body = req.body ?? {};
 
+      const name = cleanString(body.name, 120);
+      const title = cleanString(body.title, 160);
+      const phone = cleanString(body.phone, 30);
+      const address = cleanString(body.address, 300);
+      const category = cleanString(body.category, 40);
+      const hourlyRate = finiteNumber(body.hourlyRate);
+      const lat = validCoordinate(body.lat, -90, 90);
+      const lng = validCoordinate(body.lng, -180, 180);
+      const yearsExperience = finiteNumber(body.yearsExperience ?? 0);
+      const responseTimeMin = finiteNumber(body.responseTimeMin ?? 30);
+
+      if (name === null || title === null || phone === null || address === null || category === null ||
+          hourlyRate === null || lat === null || lng === null || yearsExperience === null || responseTimeMin === null ||
+          yearsExperience < 0 || yearsExperience > 80 || responseTimeMin < 1 || responseTimeMin > 10080 ||
+          !SERVICE_CATEGORIES.includes(category as any)) {
+        return res.status(400).json({ success: false, error: 'Invalid provider profile fields' });
+      }
+
       const requiredFields = [
         'name',
         'category',
@@ -245,29 +262,25 @@ router.post(
         data: {
           userId: req.user!.id,
 
-          name: body.name,
+          name,
           avatar: body.avatar ?? null,
 
-          category: body.category,
-          title: body.title,
+          category: category as any,
+          title,
 
           rating: 0,
           reviewCount: 0,
 
-          hourlyRate: Number(body.hourlyRate),
+          hourlyRate,
 
           isVerified: false,
 
           licenseNumber: body.licenseNumber ?? null,
-          yearsExperience: Number(
-            body.yearsExperience ?? 0
-          ),
+          yearsExperience,
 
           distanceMiles: 0,
 
-          responseTimeMin: Number(
-            body.responseTimeMin ?? 30
-          ),
+          responseTimeMin,
 
           specialties: Array.isArray(body.specialties)
             ? body.specialties
@@ -275,16 +288,16 @@ router.post(
 
           badges: [],
 
-          phone: body.phone,
+          phone,
 
           completedJobs: 0,
 
           bio: body.bio ?? null,
 
-          lat: Number(body.lat),
-          lng: Number(body.lng),
+          lat,
+          lng,
 
-          address: body.address,
+          address,
         },
       });
 

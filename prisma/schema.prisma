@@ -51,6 +51,22 @@ enum ThemePreference {
   dark
 }
 
+enum PaymentStatus {
+  pending
+  processing
+  paid
+  failed
+  refunded
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  paid
+  failed
+  refunded
+}
+
 enum EmailJobStatus {
   pending
   processing
@@ -86,6 +102,7 @@ model Profile {
 
   preferences   UserPreferences?
   notifications Notification[]
+  notificationPreferences NotificationPreference[]
   auditEvents   AuditEvent[] @relation("Actor")
 
   @@map("profiles")
@@ -93,7 +110,7 @@ model Profile {
 
 model VerifiedPro {
   id              String          @id @default(cuid())
-  userId          String?         @unique
+  userId          String?         @unique @db.Uuid
   name            String
   avatar          String?
   category        ServiceCategory
@@ -122,7 +139,7 @@ model VerifiedPro {
 
 model LocalStore {
   id                  String      @id @default(cuid())
-  ownerId             String?
+  ownerId             String?     @db.Uuid
   name                String
   type                StoreType
   logo                String?
@@ -151,12 +168,13 @@ model StoreItem {
   unit        String
   image       String?
   inStock     Boolean
+  stockQuantity Int        @default(0)
   description String?
 }
 
 model Driver {
   id                  String    @id @default(cuid())
-  userId              String?   @unique
+  userId              String?   @unique @db.Uuid
   name                String
   avatar              String?
   vehicleType         String
@@ -188,7 +206,7 @@ model Order {
   status              OrderStatus      @default(pending)
   createdAt           DateTime         @default(now())
 
-  tenantUserId        String?
+  tenantUserId        String?        @db.Uuid
   tenantName          String
   tenantPhone         String
   tenantAddress       String
@@ -226,6 +244,7 @@ model Order {
   assignments         OrderAssignment[]
   events              OrderEvent[]
   messages            OrderMessage[]
+  payment             Payment?
 }
 
 
@@ -234,7 +253,7 @@ model OrderAssignment {
   orderId    String
   proId      String
   driverId   String?
-  assignedBy String
+  assignedBy String @db.Uuid
   createdAt  DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -259,6 +278,51 @@ model OrderMessage {
   createdAt  DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  status            PaymentStatus @default(pending)
+  method            String
+  amount            Float
+  currency          String        @default("KES")
+  provider          String?
+  providerReference String?       @unique
+  checkoutRequestId String?       @unique
+  merchantRequestId String?
+  phone             String?
+  rawResponse       Json?
+  paidAt            DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  status            PaymentStatus @default(pending)
+  method            String
+  amount            Float
+  currency          String        @default("KES")
+  provider          String?
+  providerReference String?       @unique
+  checkoutRequestId String?       @unique
+  merchantRequestId String?
+  phone             String?
+  rawResponse       Json?
+  paidAt            DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@index([status, createdAt])
 }
 
 model UserPreferences {
@@ -299,7 +363,7 @@ model Notification {
 
 model NotificationPreference {
   id        String   @id @default(cuid())
- userId String @db.Uuid
+  userId    String   @db.Uuid
   type      String
   inApp     Boolean  @default(true)
   email     Boolean  @default(true)

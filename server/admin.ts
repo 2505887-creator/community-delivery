@@ -1,11 +1,11 @@
+import { prisma } from './lib/prisma';
 import express,{Response} from 'express';
-import {PrismaClient} from '@prisma/client';
 import {requireHybridAuth} from './lib/hybridAuth';
 import type {AuthedRequest} from './lib/supabaseAdmin';
 import {supabaseAdmin} from './lib/supabaseAdmin';
 import {audit} from './lib/audit';
 import {enqueueEmail} from './lib/emailQueue';
-const prisma=new PrismaClient(); const router=express.Router(); const admin=requireHybridAuth(['admin']);
+ const router=express.Router(); const admin=requireHybridAuth(['admin']);
 router.get('/overview',admin,async(_req,res)=>{const [users,pros,drivers,stores,orders,unread,failed]=await Promise.all([prisma.profile.count(),prisma.verifiedPro.count(),prisma.driver.count(),prisma.localStore.count(),prisma.order.count(),prisma.notification.count({where:{readAt:null}}),prisma.emailJob.count({where:{status:{in:['failed','dead_letter']}}})]);res.json({success:true,data:{users,pros,drivers,stores,orders,unread,failed}})});
 router.get('/users/:id',admin,async(req:AuthedRequest,res:Response)=>{try{const user=await prisma.profile.findUnique({where:{id:req.params.id},include:{preferences:true,notifications:{orderBy:{createdAt:'desc'},take:25}}});if(!user)return res.status(404).json({success:false,error:'User not found'});res.json({success:true,data:user})}catch(e){res.status(500).json({success:false,error:'Unable to load user'})}});
 router.get('/users',admin,async(req:AuthedRequest,res:Response)=>{const q=String(req.query.q||'').trim();const role=String(req.query.role||'').trim();const users=await prisma.profile.findMany({where:{...(role?{role:role as any}:{}),...(q?{OR:[{email:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}:{})},orderBy:{createdAt:'desc'},take:200});res.json({success:true,data:users})});

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, X, AlertTriangle, ShieldCheck, CheckCircle2, ArrowRight, Loader2, Wrench } from 'lucide-react';
 import { VerifiedPro } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AiDiagnosisResult {
   diagnosis: string;
@@ -27,6 +28,8 @@ export default function AiDiagnosisModal({
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AiDiagnosisResult | null>(null);
+  const [error, setError] = useState('');
+  const { session } = useAuth();
 
   const quickPrompts = [
     'Kitchen sink pipe leaking water into base cabinet under sink',
@@ -40,18 +43,25 @@ export default function AiDiagnosisModal({
     if (!query.trim()) return;
 
     setIsLoading(true);
+    setError('');
     try {
       const response = await fetch('/api/ai/diagnose', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ issueDescription: query })
       });
       const data = await response.json();
-      if (data.success && data.data) {
-        setResult(data.data);
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Diagnosis is temporarily unavailable.');
+        return;
       }
+      setResult(data.data);
     } catch (err) {
       console.error('Diagnosis error:', err);
+      setError('Diagnosis is temporarily unavailable. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +161,12 @@ export default function AiDiagnosisModal({
             </button>
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-[11px]" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* AI Result Cards */}
           {result && (
             <div className="space-y-3 pt-2 border-t border-slate-200">
@@ -219,7 +235,7 @@ export default function AiDiagnosisModal({
                         <ShieldCheck className="w-3 h-3 text-blue-600" />
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        {matchedPro?.title} &bull; ${matchedPro?.hourlyRate}/hr
+                        {matchedPro?.title} &bull; KSh {matchedPro?.hourlyRate}/hr
                       </p>
                       <span className="text-[10px] text-emerald-700 font-semibold">
                         ★ {matchedPro?.rating} ({matchedPro?.completedJobs} jobs) &bull; {matchedPro?.distanceMiles} mi away

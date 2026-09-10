@@ -92,21 +92,6 @@ async function loadProfile(
     return null;
   }
 
-  const metadata = session.user.user_metadata || {};
-  const metadataRole = metadata.role;
-
-  const fallback: NonNullable<PublicUser> = {
-    id: session.user.id,
-    email: session.user.email || '',
-    role: isUserRole(metadataRole)
-      ? metadataRole
-      : 'tenant',
-    name:
-      typeof metadata.name === 'string'
-        ? metadata.name
-        : undefined,
-  };
-
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -115,38 +100,24 @@ async function loadProfile(
       .maybeSingle();
 
     if (error) {
-      console.error(
-        '[Auth] Profile query failed:',
-        error.message
-      );
-
-      return fallback;
+      console.error('[Auth] Profile query failed:', error.message);
+      return null;
     }
 
-    if (!data) {
-      return fallback;
-    }
-
-    if (!isUserRole(data.role)) {
-      return {
-        ...fallback,
-        name: data.name ?? fallback.name,
-      };
+    if (!data || !isUserRole(data.role)) {
+      console.error('[Auth] No valid application profile exists for this session.');
+      return null;
     }
 
     return {
       id: data.id,
-      email: data.email || fallback.email,
-      name: data.name ?? fallback.name,
+      email: data.email || session.user.email || '',
+      name: data.name ?? undefined,
       role: data.role,
     };
   } catch (error) {
-    console.error(
-      '[Auth] Unexpected profile error:',
-      error
-    );
-
-    return fallback;
+    console.error('[Auth] Unexpected profile error:', error);
+    return null;
   }
 }
 
@@ -363,10 +334,17 @@ export function AuthProvider({
       };
     }
 
-    const profile =
-      await loadProfile(data.session);
+    const profile = await loadProfile(data.session);
 
-    if (profile?.role === 'provider') {
+    if (!profile) {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        error: 'Your account profile could not be loaded. Please contact support.',
+      };
+    }
+
+    if (profile.role === 'provider') {
       try {
         const response = await fetch(
           '/api/services/ensure',
@@ -403,7 +381,7 @@ export function AuthProvider({
 
     return {
       success: true,
-      role: profile?.role || 'tenant',
+      role: profile.role,
     };
   };
 

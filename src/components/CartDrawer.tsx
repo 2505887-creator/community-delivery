@@ -24,7 +24,7 @@ interface CartDrawerProps {
     tax: number;
     total: number;
     notes: string;
-    paymentMethod: 'card' | 'apple_pay' | 'cash';
+    paymentMethod: 'mpesa' | 'cash';
   }) => void;
 }
 
@@ -47,9 +47,9 @@ export default function CartDrawer({
     0
   );
 
-  const deliveryFee = activeStore ? activeStore.deliveryFee : 2.99;
-  const serviceFee = 2.00;
-  const tax = Number((subtotal * 0.08875).toFixed(2));
+  const deliveryFee = activeStore ? activeStore.deliveryFee : 0;
+  const serviceFee = 150;
+  const tax = 0;
   const total = Number((subtotal + deliveryFee + serviceFee + tax).toFixed(2));
 
   const handleCheckoutClick = () => {
@@ -69,7 +69,7 @@ export default function CartDrawer({
       tax,
       total,
       notes: 'Please buzz Apt 14C or leave at doorman desk.',
-      paymentMethod: 'apple_pay',
+      paymentMethod: 'mpesa',
     });
   };
 
@@ -198,7 +198,7 @@ export default function CartDrawer({
               </div>
               <div className="pt-1.5 border-t border-slate-200 flex justify-between font-bold text-slate-900 text-xs">
                 <span>Total Due</span>
-                <span className="text-blue-600 font-bold">${total.toFixed(2)}</span>
+                <span className="text-blue-600 font-bold">KSh ${total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -207,7 +207,7 @@ export default function CartDrawer({
               onClick={handleCheckoutClick}
               className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
             >
-              <span>Dispatch Uber Courier (${total.toFixed(2)})</span>
+              <span>Dispatch Uber Courier (KSh ${total.toFixed(2)})</span>
               <Check className="w-3.5 h-3.5" />
             </button>
             <p className="text-[10px] text-center text-slate-400">

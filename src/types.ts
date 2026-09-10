@@ -37,6 +37,7 @@ export interface StoreItem {
   unit: string;
   image: string;
   inStock: boolean;
+  stockQuantity: number;
   description: string;
 }
 
@@ -122,7 +123,10 @@ export interface Order {
   serviceFee: number;
   tax: number;
   total: number;
-  paymentMethod: 'card' | 'apple_pay' | 'cash';
+  paymentMethod: 'mpesa' | 'cash';
+  paymentStatus?: 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
+  paymentProvider?: string;
+  paymentReference?: string;
   
   // Timings & Location coordinates
   estimatedArrivalMin: number;

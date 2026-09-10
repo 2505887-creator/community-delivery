@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './prisma';
 import { enqueueEmail } from './emailQueue';
 
-const prisma = new PrismaClient();
+
 
 export type NotificationInput = {
   userId: string;

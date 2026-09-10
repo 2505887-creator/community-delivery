@@ -96,6 +96,28 @@ if (!user) {
   const authHeaders = (): HeadersInit =>
     session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 
+  const startMpesaPayment = async (order: Order) => {
+    if (order.paymentMethod !== 'mpesa') return;
+    const phone = order.tenantPhone;
+    if (!phone || phone === 'Not provided') {
+      showToast('Order created. Add your Kenyan phone number to start M-Pesa payment.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/payments/mpesa/stk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ orderId: order.id, phone }),
+      });
+      const result = await res.json();
+      if (result.success) showToast('M-Pesa payment prompt sent to your phone.');
+      else showToast(result.error || 'Unable to start M-Pesa payment.');
+    } catch (error) {
+      console.error('M-Pesa payment error:', error);
+      showToast('Unable to start M-Pesa payment.');
+    }
+  };
+
   // Initial Fetch from Node.js Express API
   const fetchData = async () => {
     try {
@@ -180,7 +202,7 @@ if (!user) {
     notes: string;
     subtotal: number;
     total: number;
-    paymentMethod: 'card' | 'apple_pay' | 'cash';
+    paymentMethod: 'mpesa' | 'cash';
   }) => {
     if (!selectedProForBooking) return;
 
@@ -190,15 +212,7 @@ if (!user) {
         title: `${selectedProForBooking.name} - ${bookingData.issueDescription.slice(0, 35)}...`,
         category: selectedProForBooking.category,
         providerId: selectedProForBooking.id,
-        tenantName: user?.name || 'Customer',
-        tenantPhone: '',
-        tenantAddress: tenantAddress,
-        apartmentUnit: undefined,
-        subtotal: bookingData.subtotal,
-        total: bookingData.total,
-        deliveryFee: 0,
-        serviceFee: 4.50,
-        tax: Number((bookingData.subtotal * 0.08875).toFixed(2)),
+        tenantAddress,
         paymentMethod: bookingData.paymentMethod,
         estimatedArrivalMin: selectedProForBooking.responseTimeMin,
         urgency: bookingData.urgency,
@@ -217,7 +231,8 @@ if (!user) {
         setOrders(prev => [data.data, ...prev]);
         setSelectedProForBooking(null);
         setActiveTrackingOrder(data.data);
-        showToast(`Dispatched ${selectedProForBooking.name}! Live GPS tracking is active.`);
+        await startMpesaPayment(data.data);
+        if (data.data.paymentMethod === 'cash') showToast(`${selectedProForBooking.name} was assigned. Payment is due in cash.`);
       }
     } catch (err) {
       console.error('Error creating booking:', err);
@@ -234,7 +249,7 @@ if (!user) {
     tax: number;
     total: number;
     notes: string;
-    paymentMethod: 'card' | 'apple_pay' | 'cash';
+    paymentMethod: 'mpesa' | 'cash';
   }) => {
     try {
       const payload = {
@@ -242,18 +257,8 @@ if (!user) {
         title: `${checkoutData.store.name} Delivery (${checkoutData.items.length} items)`,
         category: checkoutData.store.type,
         storeId: checkoutData.store.id,
-        storeName: checkoutData.store.name,
-        storeType: checkoutData.store.type,
-        items: checkoutData.items,
-        tenantName: user?.name || 'Customer',
-        tenantPhone: '',
-        tenantAddress: tenantAddress,
-        apartmentUnit: undefined,
-        subtotal: checkoutData.subtotal,
-        deliveryFee: checkoutData.deliveryFee,
-        serviceFee: checkoutData.serviceFee,
-        tax: checkoutData.tax,
-        total: checkoutData.total,
+        items: checkoutData.items.map(({ itemId, quantity }) => ({ itemId, quantity })),
+        tenantAddress,
         paymentMethod: checkoutData.paymentMethod,
         estimatedArrivalMin: checkoutData.store.deliveryEstimateMin,
         urgency: 'normal',
@@ -272,7 +277,8 @@ if (!user) {
         setCartItems([]);
         setIsCartOpen(false);
         setActiveTrackingOrder(data.data);
-        showToast(`Uber courier dispatched for ${checkoutData.store.name}!`);
+        await startMpesaPayment(data.data);
+        if (data.data.paymentMethod === 'cash') showToast(`Delivery order created for ${checkoutData.store.name}. Payment is due in cash.`);
       }
     } catch (err) {
       console.error('Checkout error:', err);
@@ -291,19 +297,14 @@ if (!user) {
     try {
       const payload = {
         type: 'ride_cargo',
-        title: `Uber ${dispatchData.vehicleType} Dispatch`,
+        title: `${dispatchData.vehicleType} Dispatch`,
         category: 'transport',
         driverId: dispatchData.driver.id,
-        tenantName: 'Jasmine Wangeci',
-        tenantPhone: '+254 034 567 890',
+        vehicleType: dispatchData.vehicleType,
         tenantAddress: dispatchData.destinationLocation,
-        apartmentUnit: undefined,
-        subtotal: dispatchData.total,
-        deliveryFee: 0,
-        serviceFee: 2.50,
-        tax: Number((dispatchData.total * 0.08875).toFixed(2)),
-        total: Number((dispatchData.total + 2.50 + dispatchData.total * 0.08875).toFixed(2)),
-        paymentMethod: 'card',
+        pickupLocation: dispatchData.pickupLocation,
+        destinationLocation: dispatchData.destinationLocation,
+        paymentMethod: 'mpesa',
         estimatedArrivalMin: 10,
         urgency: 'normal',
         notes: `${dispatchData.cargoDescription} (Pickup: ${dispatchData.pickupLocation})`
@@ -319,7 +320,8 @@ if (!user) {
       if (data.success && data.data) {
         setOrders(prev => [data.data, ...prev]);
         setActiveTrackingOrder(data.data);
-        showToast(`${dispatchData.driver.name} is on the way with ${dispatchData.vehicleType}!`);
+        await startMpesaPayment(data.data);
+        if (data.data.paymentMethod === 'cash') showToast(`${dispatchData.driver.name} has been assigned to your ${dispatchData.vehicleType.toLowerCase()} request. Payment is due in cash.`);
       }
     } catch (err) {
       console.error('Ride dispatch error:', err);

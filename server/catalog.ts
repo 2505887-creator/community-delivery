@@ -1,10 +1,10 @@
+import { prisma } from './lib/prisma';
 import express, { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { optionalHybridAuth } from './lib/hybridAuth';
 import type { AuthedRequest } from './lib/supabaseAdmin';
 import { mapPro } from './lib/mappers';
 
-const prisma = new PrismaClient();
+
 const router = express.Router();
 
 router.get('/', optionalHybridAuth(), async (_req: AuthedRequest, res: Response) => {

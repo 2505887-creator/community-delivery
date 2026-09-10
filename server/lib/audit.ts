@@ -1,7 +1,7 @@
+import { prisma } from './prisma';
 import crypto from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
 import type { AuthedRequest } from './supabaseAdmin';
-const prisma = new PrismaClient();
+
 export async function audit(req: AuthedRequest, action: string, resource: string, resourceId?: string, metadata?: unknown) {
   if (!req.user) return;
   const ip = String(req.ip || req.headers['x-forwarded-for'] || '');

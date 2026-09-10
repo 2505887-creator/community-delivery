@@ -23,11 +23,11 @@ export default function MerchantDashboard({
     coverImage: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&q=80&w=800',
     rating: 4.92,
     reviewCount: 512,
-    distanceMiles: 0.3,
+    distanceMiles: 0,
     deliveryEstimateMin: 20,
-    deliveryFee: 2.49,
-    minOrder: 15,
-    address: '108 Fulton St, New York, NY',
+    deliveryFee: 250,
+    minOrder: 500,
+    address: 'Nairobi, Kenya',
     isOpen: true,
     items: []
   };
@@ -35,7 +35,7 @@ export default function MerchantDashboard({
   const currentStore = stores.find((s) => s.id === selectedStoreId) || stores[0] || fallbackStore;
 
   const storeOrders = orders.filter(
-    (o) => o.storeId === currentStore.id || o.type === 'store_delivery'
+    (o) => o.storeId === currentStore.id
   );
 
   return (
@@ -119,8 +119,8 @@ export default function MerchantDashboard({
                   </div>
 
                   <div className="text-right">
-                    <span className="font-bold text-blue-600 text-base">${order.total.toFixed(2)}</span>
-                    <div className="text-[10px] text-slate-500">{order.paymentMethod.toUpperCase()} Paid</div>
+                    <span className="font-bold text-blue-600 text-base">KSh {order.total.toFixed(2)}</span>
+                    <div className="text-[10px] text-slate-500">{order.paymentMethod.toUpperCase()} • {(order.paymentStatus || 'pending').toUpperCase()}</div>
                   </div>
                 </div>
 

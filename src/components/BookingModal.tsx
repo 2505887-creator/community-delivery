@@ -13,7 +13,7 @@ interface BookingModalProps {
     notes: string;
     subtotal: number;
     total: number;
-    paymentMethod: 'card' | 'apple_pay' | 'cash';
+    paymentMethod: 'mpesa' | 'cash';
   }) => void;
 }
 
@@ -30,7 +30,7 @@ export default function BookingModal({
   const [bookingTimeType, setBookingTimeType] = useState<'asap' | 'schedule'>('asap');
   const [selectedDate, setSelectedDate] = useState('Tomorrow, 10:00 AM');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple_pay' | 'cash'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'cash'>('mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Financial calculations
@@ -238,7 +238,7 @@ export default function BookingModal({
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">Payment Method</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['card', 'apple_pay', 'cash'] as const).map((method) => (
+              {(['mpesa', 'cash'] as const).map((method) => (
                 <button
                   key={method}
                   type="button"

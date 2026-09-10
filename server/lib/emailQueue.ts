@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-const prisma=new PrismaClient();
+import { prisma } from './prisma';
+
 const esc=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export async function enqueueEmail(to:string,template:string,payload:Record<string,unknown>){ return prisma.emailJob.create({data:{to,template,payload:payload as any}}); }
 export function render(t:string,p:Record<string,unknown>){ return t.replace(/{{\s*([\w.]+)\s*}}/g,(_,k)=>esc(String(k.split('.').reduce((a:any,x:string)=>a?.[x],p)??''))); }

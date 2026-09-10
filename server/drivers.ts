@@ -1,11 +1,11 @@
+import { prisma } from './lib/prisma';
 import express, { Response } from 'express';
 import multer from 'multer';
-import { PrismaClient } from '@prisma/client';
 import { uploadBufferToS3 } from './uploads';
 import { normalizeKenyaPhone } from '../src/utils/phone-server';
 import { requireAuth, optionalAuth, AuthedRequest } from './lib/supabaseAdmin';
 
-const prisma = new PrismaClient();
+
 
 const router = express.Router();
 
@@ -49,8 +49,14 @@ router.post(
       const vehicleReg = String(body.vehicleReg || '').trim();
       const vehicleType = String(body.vehicleType || '').trim();
 
-      const payoutMethod =
-        String(body.payoutMethod || 'mpesa').trim();
+      if (name.length > 120 || idNumber.length > 80 || vehicleReg.length > 40 || vehicleType.length > 60) {
+        return res.status(400).json({ success: false, error: 'One or more fields are too long' });
+      }
+
+      const payoutMethod = String(body.payoutMethod || 'mpesa').trim().toLowerCase();
+      if (!['mpesa', 'bank'].includes(payoutMethod)) {
+        return res.status(400).json({ success: false, error: 'Invalid payout method' });
+      }
 
       if (!name || !rawPhone || !idNumber || !vehicleReg) {
         return res.status(400).json({
@@ -168,7 +174,7 @@ router.post(
             id: created.id,
           },
           data: {
-            idDocumentUrl: uploaded.url,
+            idDocumentUrl: uploaded.key,
           },
         });
       }
@@ -187,7 +193,7 @@ router.post(
             id: created.id,
           },
           data: {
-            vehicleDocUrl: uploaded.url,
+            vehicleDocUrl: uploaded.key,
           },
         });
       }

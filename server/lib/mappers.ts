@@ -1,15 +1,21 @@
-import type { Driver, LocalStore, Order, StoreItem, User, VerifiedPro } from '@prisma/client';
+import type {
+  Driver,
+  LocalStore,
+  Order,
+  Profile,
+  StoreItem,
+  VerifiedPro,
+} from '@prisma/client';
 import { decodeOrderNotes } from './orderRules';
 
-type StoreWithItems = LocalStore & { StoreItem?: StoreItem[] };
+type StoreWithItems = LocalStore & { items?: StoreItem[] };
 type OrderWithRels = Order & {
-  Driver?: Driver | null;
-  LocalStore?: LocalStore | null;
-  VerifiedPro?: VerifiedPro | null;
+  driver?: Driver | null;
+  store?: LocalStore | null;
+  provider?: VerifiedPro | null;
 };
 
 export function mapStore(store: StoreWithItems) {
-  const items = (store.StoreItem ?? []).map(mapStoreItem);
   return {
     id: store.id,
     name: store.name,
@@ -26,7 +32,7 @@ export function mapStore(store: StoreWithItems) {
     isOpen: store.isOpen,
     createdAt: store.createdAt,
     isVerified: store.rating >= 4.5,
-    items,
+    items: (store.items ?? []).map(mapStoreItem),
   };
 }
 
@@ -60,15 +66,15 @@ export function mapOrder(order: OrderWithRels) {
     providerId: order.providerId,
     driverId: order.driverId,
     storeId: order.storeId,
-    providerName: order.VerifiedPro?.name,
-    providerAvatar: order.VerifiedPro?.avatar,
-    providerPhone: order.VerifiedPro?.phone,
-    driverName: order.Driver?.name,
-    driverAvatar: order.Driver?.avatar,
-    driverVehicle: order.Driver?.vehicleType,
-    driverPhone: order.Driver?.phone,
-    storeName: order.LocalStore?.name,
-    storeType: order.LocalStore?.type,
+    providerName: order.provider?.name,
+    providerAvatar: order.provider?.avatar,
+    providerPhone: order.provider?.phone,
+    driverName: order.driver?.name,
+    driverAvatar: order.driver?.avatar,
+    driverVehicle: order.driver?.vehicleType,
+    driverPhone: order.driver?.phone,
+    storeName: order.store?.name,
+    storeType: order.store?.type,
     items: decoded.items,
     notes: decoded.notes ?? undefined,
     subtotal: order.subtotal,
@@ -88,13 +94,19 @@ export function mapOrder(order: OrderWithRels) {
     originLocation: {
       lat: order.originLat ?? 0,
       lng: order.originLng ?? 0,
-      label: order.LocalStore?.name || order.VerifiedPro?.name || 'Origin',
+      label: order.store?.name || order.provider?.name || 'Origin',
     },
     currentLocation: {
       lat: order.currentLat ?? order.originLat ?? 0,
       lng: order.currentLng ?? order.originLng ?? 0,
     },
-    messages: [] as { id: string; sender: string; senderName: string; text: string; timestamp: string }[],
+    messages: [] as {
+      id: string;
+      sender: string;
+      senderName: string;
+      text: string;
+      timestamp: string;
+    }[],
   };
 }
 
@@ -115,13 +127,14 @@ export function mapDriver(driver: Driver) {
   };
 }
 
-export function mapPublicUser(user: User) {
+export function mapPublicUser(user: Profile) {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
+    name: user.name ?? '',
     role: user.role,
     createdAt: user.createdAt,
+    suspendedAt: user.suspendedAt,
   };
 }
 

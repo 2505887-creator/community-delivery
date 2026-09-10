@@ -1,10 +1,10 @@
+import { prisma } from './lib/prisma';
 import express,{Response} from 'express';
-import {PrismaClient} from '@prisma/client';
 import {requireHybridAuth} from './lib/hybridAuth';
 import type {AuthedRequest} from './lib/supabaseAdmin';
 import {supabaseAdmin} from './lib/supabaseAdmin';
 import {audit} from './lib/audit';
-const prisma=new PrismaClient(); const router=express.Router();
+ const router=express.Router();
 router.get('/me',requireHybridAuth(),async(req:AuthedRequest,res:Response)=>{try{const u=req.user!;const p=await prisma.profile.upsert({where:{id:u.id},create:{id:u.id,email:u.email,name:u.name,role:u.role},update:{email:u.email,name:u.name||undefined}});const preferences=await prisma.userPreferences.upsert({where:{userId:u.id},create:{userId:u.id},update:{}});res.json({success:true,data:{...p,preferences}})}catch(e){console.error(e);res.status(500).json({success:false,error:'Failed to load account'})}});
 router.patch('/profile',requireHybridAuth(),async(req:AuthedRequest,res:Response)=>{try{const {name,phone,avatarUrl,timezone,locale,currency}=req.body||{};const p=await prisma.profile.update({where:{id:req.user!.id},data:{...(name!==undefined&&{name:String(name).trim()}),...(phone!==undefined&&{phone:String(phone).trim()}),...(avatarUrl!==undefined&&{avatarUrl:String(avatarUrl).trim()}),...(timezone!==undefined&&{timezone:String(timezone)}),...(locale!==undefined&&{locale:String(locale)}),...(currency!==undefined&&{currency:String(currency)})}});await audit(req,'profile.update','profile',p.id);res.json({success:true,data:p})}catch(e){res.status(400).json({success:false,error:'Unable to update profile'})}});
 router.get('/preferences',requireHybridAuth(),async(req:AuthedRequest,res:Response)=>{const p=await prisma.userPreferences.upsert({where:{userId:req.user!.id},create:{userId:req.user!.id},update:{}});res.json({success:true,data:p})});
